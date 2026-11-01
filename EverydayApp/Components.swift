@@ -26,14 +26,38 @@ struct AddButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "plus")
-                .font(.title3.weight(.medium))
-                .foregroundStyle(Theme.onPrimary)
-                .frame(width: 50, height: 50)
-                .background(Theme.forest, in: Circle())
+            AddButtonLabel()
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Add")
+    }
+}
+
+/// The round green "+" look, shared by AddButton and the add menu on the Calendar tab.
+struct AddButtonLabel: View {
+    var body: some View {
+        Image(systemName: "plus")
+            .font(.title3.weight(.medium))
+            .foregroundStyle(Theme.onPrimary)
+            .frame(width: 50, height: 50)
+            .background(Theme.forest, in: Circle())
+    }
+}
+
+/// Wraps an event card so tapping it opens the editor. Read-only calendars
+/// (Holidays, Birthdays, subscribed calendars) just show the card.
+struct EditableEvent<Content: View>: View {
+    let event: CalendarEvent
+    let onEdit: (CalendarEvent) -> Void
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        if event.canEdit {
+            Button { onEdit(event) } label: { content() }
+                .buttonStyle(.plain)
+        } else {
+            content()
+        }
     }
 }
 

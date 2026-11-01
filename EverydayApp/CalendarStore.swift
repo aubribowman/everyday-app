@@ -23,6 +23,11 @@ struct CalendarEvent: Identifiable, Hashable {
     let calendarName: String
     let category: EventCategory
     let hasVideoCall: Bool
+    let notes: String
+    let eventID: String       // EventKit's identifier (all repeats of a repeating event share it)
+    let calendarID: String
+    let canEdit: Bool         // false for read-only calendars like Holidays or Birthdays
+    let isRepeating: Bool
 
     /// "10:00–10:30 · Work calendar"
     var subtitle: String {
@@ -131,8 +136,130 @@ final class CalendarStore {
             location: event.location ?? "",
             calendarName: event.calendar.title,
             category: category(for: event.calendar),
-            hasVideoCall: hasCall
+            hasVideoCall: hasCall,
+            notes: event.notes ?? "",
+            eventID: event.eventIdentifier ?? "",
+            calendarID: event.calendar.calendarIdentifier,
+            canEdit: event.calendar.allowsContentModifications,
+            isRepeating: event.hasRecurrenceRules
         )
+    }
+
+    // MARK: Writing events
+
+    /// The values a new or edited event is saved with (filled in by EventEditSheet).
+    struct EventDraft {
+        var title = ""
+        var start = Date.now
+        var end = Date.now.addingTimeInterval(3600)
+        var isAllDay = false
+        var location = ""
+        var notes = ""
+        var calendarID = ""
+    }
+
+    enum WriteError: LocalizedError {
+        case eventNotFound, noCalendar
+
+        var errorDescription: String? {
+            switch self {
+            case .eventNotFound: "This event couldn't be found. It may have been changed in another app."
+            case .noCalendar: "There's no calendar to save to. Add one in iPhone Settings → Calendar → Accounts."
+            }
+        }
+    }
+
+    /// Calendars the app may add events to (skips read-only ones like Holidays and Birthdays).
+    var writableCalendars: [EKCalendar] {
+        calendars.filter(\.allowsContentModifications)
+    }
+
+    /// The calendar new events go in unless you pick another (set in iPhone Settings → Calendar).
+    var defaultCalendar: EKCalendar? {
+        store.defaultCalendarForNewEvents ?? writableCalendars.first
+    }
+
+    /// Creates a new event, or updates `existing` when given.
+    func save(_ draft: EventDraft, updating existing: CalendarEvent? = nil) throws {
+        let event: EKEvent
+        if let existing {
+            guard let found = ekEvent(for: existing) else { throw WriteError.eventNotFound }
+            event = found
+        } else {
+            event = EKEvent(eventStore: store)
+        }
+        guard let calendar = store.calendar(withIdentifier: draft.calendarID) ?? defaultCalendar else {
+            throw WriteError.noCalendar
+        }
+        event.title = draft.title
+        event.startDate = draft.start
+        event.endDate = draft.end
+        event.isAllDay = draft.isAllDay
+        event.location = draft.location.isEmpty ? nil : draft.location
+        event.notes = draft.notes.isEmpty ? nil : draft.notes
+        event.calendar = calendar
+        // `.thisEvent` = for a repeating event, only this one occurrence changes.
+        try store.save(event, span: .thisEvent, commit: true)
+        reload()
+    }
+
+    func delete(_ event: CalendarEvent) throws {
+        guard let found = ekEvent(for: event) else { throw WriteError.eventNotFound }
+        try store.remove(found, span: .thisEvent, commit: true)
+        reload()
+    }
+
+    /// Finds the exact EventKit occurrence. Repeating events share one identifier,
+    /// so we search around its time and match the start too.
+    private func ekEvent(for event: CalendarEvent) -> EKEvent? {
+        guard let calendar = store.calendar(withIdentifier: event.calendarID) else { return nil }
+        let predicate = store.predicateForEvents(
+            withStart: event.start.addingTimeInterval(-60),
+            end: event.end.addingTimeInterval(60),
+            calendars: [calendar]
+        )
+        return store.events(matching: predicate)
+            .first { $0.eventIdentifier == event.eventID && $0.startDate == event.start }
+    }
+
+    // MARK: Tasks on the calendar
+
+    /// Keeps a task's calendar event in step with the task: creates, updates or removes it.
+    /// Called when you leave a task's detail screen and when "Add to calendar" changes.
+    func sync(_ task: TaskItem) {
+        guard access == .granted else { return }
+        let existing = task.calendarEventID.isEmpty ? nil : store.event(withIdentifier: task.calendarEventID)
+
+        // Switched off, or no date anymore → remove the event if there is one.
+        guard task.addToCalendar, let due = task.dueDate else {
+            if let existing { try? store.remove(existing, span: .thisEvent, commit: true) }
+            if !task.calendarEventID.isEmpty {
+                task.calendarEventID = ""
+                reload()
+            }
+            return
+        }
+
+        let event = existing ?? EKEvent(eventStore: store)
+        event.title = task.title
+        event.startDate = due
+        event.endDate = due.addingTimeInterval(30 * 60)
+        event.isAllDay = false
+        event.location = task.location.isEmpty ? nil : task.location
+        event.notes = task.notes.isEmpty ? nil : task.notes
+        // The task's "Remind me" setting becomes a real calendar alert on the phone.
+        event.alarms = [EKAlarm(relativeOffset: TimeInterval(-task.remindMinutesBefore * 60))]
+        if let calendar = store.calendar(withIdentifier: task.calendarID) ?? defaultCalendar,
+           calendar.allowsContentModifications {
+            event.calendar = calendar
+        }
+        do {
+            try store.save(event, span: .thisEvent, commit: true)
+            task.calendarEventID = event.eventIdentifier ?? ""
+        } catch {
+            print("Couldn't save task to calendar:", error)
+        }
+        reload()
     }
 
     // MARK: Settings

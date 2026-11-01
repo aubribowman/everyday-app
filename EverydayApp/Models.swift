@@ -87,6 +87,9 @@ final class TaskItem {
     var locationDetail: String = ""   // "48 Willow Street"
     var notes: String = ""
     var createdAt: Date = Date.now
+    var addToCalendar: Bool = false   // also put this task on a real calendar (Google, Outlook...)
+    var calendarID: String = ""       // which calendar ("" = the phone's default)
+    var calendarEventID: String = ""  // the calendar event made for it ("" = none yet)
 
     var list: TaskList?               // nil = a standalone task
     var linkedList: TaskList?

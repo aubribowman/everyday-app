@@ -1,13 +1,47 @@
 import SwiftUI
 import SwiftData
+import EventKit
 
 struct TaskDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(CalendarStore.self) private var calendarStore
     @Bindable var task: TaskItem
 
     @State private var showingDatePicker = false
     @State private var editingLocation = false
+    @State private var showingCalendarOff = false
+    @State private var isDeleting = false
+
+    /// The "Add to calendar" switch. Turning it on asks for calendar access if needed,
+    /// gives the task a time if it has none, and creates the event right away.
+    private var addToCalendar: Binding<Bool> {
+        Binding(
+            get: { task.addToCalendar },
+            set: { isOn in
+                task.addToCalendar = isOn
+                if isOn && task.dueDate == nil { task.dueDate = .now.addingTimeInterval(3600) }
+                Task {
+                    if isOn && calendarStore.access == .notDetermined {
+                        await calendarStore.requestAccess()
+                    }
+                    if isOn && calendarStore.access != .granted {
+                        task.addToCalendar = false
+                        showingCalendarOff = true
+                    } else {
+                        calendarStore.sync(task)
+                    }
+                }
+            }
+        )
+    }
+
+    private var calendarName: String {
+        let calendars = calendarStore.writableCalendars
+        return calendars.first { $0.calendarIdentifier == task.calendarID }?.title
+            ?? calendarStore.defaultCalendar?.title
+            ?? "Default"
+    }
 
     static let remindOptions: [Option<Int>] = [
         Option(value: 0, label: "At the time"),
@@ -91,6 +125,10 @@ struct TaskDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button("Delete", systemImage: "trash", role: .destructive) {
+                        // Remove its calendar event too, then the task itself.
+                        isDeleting = true
+                        task.addToCalendar = false
+                        calendarStore.sync(task)
                         dismiss()
                         context.delete(task)
                     }
@@ -103,6 +141,20 @@ struct TaskDetailView: View {
             TextField("Place", text: $task.location)
             TextField("Address", text: $task.locationDetail)
             Button("Done") {}
+        }
+        .alert("Calendar access is off", isPresented: $showingCalendarOff) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text("Turn on calendar access for EverydayApp in Settings to add tasks to your calendar.")
+        }
+        // Copy any edits (title, time, place, notes, reminder) to the calendar event on the way out.
+        .onDisappear {
+            if !isDeleting { calendarStore.sync(task) }
         }
     }
 
@@ -163,6 +215,45 @@ struct TaskDetailView: View {
                           detail: task.locationDetail.isEmpty ? nil : task.locationDetail)
             }
             .buttonStyle(.plain)
+
+            Divider().overlay(Theme.hairline)
+
+            // Add to calendar: puts this task on your real calendar (Google, Outlook, iCloud).
+            Toggle(isOn: addToCalendar) {
+                HStack(spacing: 14) {
+                    Image(systemName: "calendar.badge.plus")
+                        .foregroundStyle(Theme.ink)
+                        .frame(width: 38, height: 38)
+                        .background(Theme.background, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Add to calendar").font(.body.weight(.medium)).foregroundStyle(Theme.ink)
+                        Text("Shows up in your Google, Outlook or iCloud calendar")
+                            .font(.caption).foregroundStyle(Theme.muted)
+                    }
+                }
+            }
+            .tint(Theme.forest)
+            .padding(.vertical, 14)
+
+            if task.addToCalendar && calendarStore.access == .granted {
+                Divider().overlay(Theme.hairline)
+                Menu {
+                    Picker("Calendar", selection: $task.calendarID) {
+                        ForEach(calendarStore.writableCalendars, id: \.calendarIdentifier) { calendar in
+                            Text(calendar.title).tag(calendar.calendarIdentifier)
+                        }
+                    }
+                } label: {
+                    DetailRow(icon: "tray", label: "Calendar", value: calendarName)
+                }
+                // Moving the task to another calendar: recreate the event there.
+                .onChange(of: task.calendarID) {
+                    task.addToCalendar = false
+                    calendarStore.sync(task)
+                    task.addToCalendar = true
+                    calendarStore.sync(task)
+                }
+            }
         }
         .padding(.horizontal, 16)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))

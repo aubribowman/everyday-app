@@ -26,6 +26,8 @@ struct CalendarView: View {
     @Query(sort: \TaskItem.createdAt) private var allItems: [TaskItem]
     @State private var selectedDay = Calendar.current.startOfDay(for: .now)
     @State private var showingNewTask = false
+    @State private var showingNewEvent = false
+    @State private var editingEvent: CalendarEvent?
     private let cal = Calendar.mondayFirst
 
     private var weekDays: [Date] {
@@ -37,7 +39,10 @@ struct CalendarView: View {
     private var weekEvents: [CalendarEvent] {
         guard let first = weekDays.first, let last = weekDays.last,
               let end = cal.date(byAdding: .day, value: 1, to: last) else { return [] }
+        // Skip events the app made for tasks: those tasks already show on the timeline.
+        let taskEventIDs = Set(allItems.map(\.calendarEventID).filter { !$0.isEmpty })
         return calendarStore.events(from: first, to: end)
+            .filter { !taskEventIDs.contains($0.eventID) }
     }
 
     private func events(on day: Date, from pool: [CalendarEvent]) -> [CalendarEvent] {
@@ -70,7 +75,13 @@ struct CalendarView: View {
                             .tracking(-0.5)
                             .foregroundStyle(Theme.ink)
                         Spacer()
-                        AddButton { showingNewTask = true }
+                        Menu {
+                            Button("New task", systemImage: "checkmark.circle") { showingNewTask = true }
+                            Button("New event", systemImage: "calendar.badge.plus") { showingNewEvent = true }
+                        } label: {
+                            AddButtonLabel()
+                        }
+                        .accessibilityLabel("Add")
                     }
 
                     CalendarStatusCard()
@@ -111,7 +122,11 @@ struct CalendarView: View {
 
                     if !allDay.isEmpty {
                         VStack(spacing: 8) {
-                            ForEach(allDay) { AllDayChip(event: $0) }
+                            ForEach(allDay) { event in
+                                EditableEvent(event: event, onEdit: { editingEvent = $0 }) {
+                                    AllDayChip(event: event)
+                                }
+                            }
                         }
                     }
 
@@ -126,7 +141,9 @@ struct CalendarView: View {
                                     TimeLabel(date: entry.date)
                                     switch entry {
                                     case .event(let event):
-                                        EventCard(event: event)
+                                        EditableEvent(event: event, onEdit: { editingEvent = $0 }) {
+                                            EventCard(event: event)
+                                        }
                                     case .task(let task):
                                         NavigationLink(value: task) { TaskTimelineCard(task: task) }
                                             .buttonStyle(.plain)
@@ -147,6 +164,10 @@ struct CalendarView: View {
             .navigationDestination(for: TaskItem.self) { TaskDetailView(task: $0) }
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
             .sheet(isPresented: $showingNewTask) { NewTaskSheet(defaultDate: selectedDay) }
+            .sheet(isPresented: $showingNewEvent) {
+                EventEditSheet(defaultDate: selectedDay).environment(calendarStore)
+            }
+            .sheet(item: $editingEvent) { EventEditSheet(editing: $0).environment(calendarStore) }
         }
     }
 

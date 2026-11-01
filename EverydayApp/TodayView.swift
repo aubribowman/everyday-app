@@ -8,6 +8,7 @@ struct TodayView: View {
     @AppStorage("userName") private var userName = "Aubri Bowman"
     @State private var showingNewTask = false
     @State private var showingSettings = false
+    @State private var editingEvent: CalendarEvent?
 
     private var todayTasks: [TaskItem] {
         allItems.filter { item in
@@ -17,7 +18,11 @@ struct TodayView: View {
     private var openCount: Int { todayTasks.filter { !$0.isDone }.count }
     private var doneCount: Int { todayTasks.count - openCount }
 
-    private var todayEvents: [CalendarEvent] { calendarStore.events(on: .now) }
+    // Skips events the app made for tasks, since those tasks are already listed.
+    private var todayEvents: [CalendarEvent] {
+        let taskEventIDs = Set(allItems.map(\.calendarEventID).filter { !$0.isEmpty })
+        return calendarStore.events(on: .now).filter { !taskEventIDs.contains($0.eventID) }
+    }
     private var upcomingEvents: [CalendarEvent] {
         Array(todayEvents.filter { !$0.isAllDay && $0.end > .now }.prefix(3))
     }
@@ -63,6 +68,7 @@ struct TodayView: View {
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
             .sheet(isPresented: $showingNewTask) { NewTaskSheet() }
             .sheet(isPresented: $showingSettings) { SettingsSheet() }
+            .sheet(item: $editingEvent) { EventEditSheet(editing: $0).environment(calendarStore) }
         }
     }
 
@@ -142,7 +148,9 @@ struct TodayView: View {
                     ForEach(upcomingEvents) { event in
                         HStack(alignment: .top, spacing: 14) {
                             TimeLabel(date: event.start)
-                            EventCard(event: event)
+                            EditableEvent(event: event, onEdit: { editingEvent = $0 }) {
+                                EventCard(event: event)
+                            }
                         }
                     }
                 }
