@@ -8,6 +8,7 @@ struct NewTaskSheet: View {
     @State private var title = ""
     @State private var hasDate = true
     @State private var date: Date
+    @State private var icon = ""
 
     /// Pass a day from the calendar to default to 9 AM that day; otherwise the next full hour.
     init(defaultDate: Date? = nil) {
@@ -25,10 +26,16 @@ struct NewTaskSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("What needs doing?", text: $title)
-                Toggle("Date & time", isOn: $hasDate)
-                if hasDate {
-                    DatePicker("When", selection: $date)
+                Section {
+                    TextField("What needs doing?", text: $title)
+                    Toggle("Date & time", isOn: $hasDate)
+                    if hasDate {
+                        DatePicker("When", selection: $date)
+                    }
+                }
+
+                Section("Icon") {
+                    IconGrid(icons: IconChoices.tasks, selection: $icon, allowsNone: true)
                 }
             }
             .tint(Theme.forest)
@@ -44,12 +51,14 @@ struct NewTaskSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        // Opens halfway; drag up to see all the icons.
+        .presentationDetents([.medium, .large])
     }
 
     private func add() {
         let task = TaskItem(title: title.trimmingCharacters(in: .whitespaces))
         task.dueDate = hasDate ? date : nil
+        task.icon = icon
         context.insert(task)
         dismiss()
     }
@@ -80,10 +89,6 @@ struct NewListSheet: View {
         _isFeatured = State(initialValue: list?.isFeatured ?? false)
     }
 
-    private let icons = ["checklist", "basket", "house", "book", "briefcase",
-                         "leaf", "gift", "airplane", "heart", "pawprint"]
-    private let columns = Array(repeating: GridItem(.flexible()), count: 5)
-
     var body: some View {
         NavigationStack {
             Form {
@@ -95,19 +100,7 @@ struct NewListSheet: View {
                 }
 
                 Section("Icon") {
-                    LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(icons, id: \.self) { symbol in
-                            Button { icon = symbol } label: {
-                                Image(systemName: symbol)
-                                    .font(.title3)
-                                    .foregroundStyle(icon == symbol ? Theme.onPrimary : Theme.ink)
-                                    .frame(width: 44, height: 44)
-                                    .background(icon == symbol ? Theme.forest : Theme.background, in: Circle())
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                    }
-                    .padding(.vertical, 6)
+                    IconGrid(icons: IconChoices.lists, selection: $icon)
                 }
 
                 Section("Color") {
@@ -216,6 +209,31 @@ struct SettingsSheet: View {
                 }
             }
         }
+        .presentationDetents([.medium])
+    }
+}
+
+/// Pick the icon shown next to a task. Tapping an icon saves it and closes the sheet.
+struct TaskIconSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var task: TaskItem
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                IconGrid(icons: IconChoices.tasks, selection: $task.icon, allowsNone: true)
+                    .padding(20)
+            }
+            .navigationTitle("Icon")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .onChange(of: task.icon) { dismiss() }
+        }
+        .tint(Theme.forest)
         .presentationDetents([.medium])
     }
 }

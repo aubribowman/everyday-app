@@ -12,6 +12,7 @@ struct TaskDetailView: View {
     @State private var editingLocation = false
     @State private var showingCalendarOff = false
     @State private var isDeleting = false
+    @State private var choosingIcon = false
 
     /// The "Add to calendar" switch. Turning it on asks for calendar access if needed,
     /// gives the task a time if it has none, and creates the event right away.
@@ -152,6 +153,7 @@ struct TaskDetailView: View {
         } message: {
             Text("Turn on calendar access for EverydayApp in Settings to add tasks to your calendar.")
         }
+        .sheet(isPresented: $choosingIcon) { TaskIconSheet(task: task) }
         // Copy any edits (title, time, place, notes, reminder) to the calendar event on the way out.
         .onDisappear {
             if !isDeleting { calendarStore.sync(task) }
@@ -213,6 +215,16 @@ struct TaskDetailView: View {
                 DetailRow(icon: "mappin.circle", label: "Location",
                           value: task.location.isEmpty ? "Add a place" : task.location,
                           detail: task.locationDetail.isEmpty ? nil : task.locationDetail)
+            }
+            .buttonStyle(.plain)
+
+            Divider().overlay(Theme.hairline)
+
+            // Icon: shows the chosen icon in the row; tap to pick another.
+            Button { choosingIcon = true } label: {
+                DetailRow(icon: task.icon.isEmpty ? "square.dashed" : task.icon,
+                          label: "Icon",
+                          value: task.icon.isEmpty ? "Add an icon" : "Change icon")
             }
             .buttonStyle(.plain)
 

@@ -221,3 +221,53 @@ struct Option<Value: Hashable>: Identifiable {
     let label: String
     var id: Value { value }
 }
+
+/// The icons you can choose from (names from Apple's SF Symbols).
+enum IconChoices {
+    static let lists = ["checklist", "basket", "house", "book", "briefcase",
+                        "leaf", "gift", "airplane", "heart", "pawprint"]
+
+    static let tasks = ["briefcase", "laptopcomputer", "envelope", "phone", "person.2",
+                        "basket", "cart", "fork.knife", "house", "bed.double",
+                        "leaf", "drop", "sun.max", "pawprint", "figure.walk",
+                        "dumbbell", "pills", "stethoscope", "car", "airplane",
+                        "book", "graduationcap", "music.note", "paintbrush", "gift",
+                        "heart", "tshirt", "scissors", "wrench.and.screwdriver", "dollarsign.circle"]
+}
+
+/// A grid of round icon buttons; the chosen one is filled green.
+/// `allowsNone` adds a first "no icon" choice (saved as "").
+struct IconGrid: View {
+    let icons: [String]
+    @Binding var selection: String
+    var allowsNone = false
+
+    private let columns = Array(repeating: GridItem(.flexible()), count: 5)
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 12) {
+            if allowsNone {
+                cell(value: "", image: "nosign", name: "No icon")
+            }
+            ForEach(icons, id: \.self) { symbol in
+                cell(value: symbol, image: symbol, name: symbol)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func cell(value: String, image: String, name: String) -> some View {
+        let isChosen = selection == value
+        return Button { selection = value } label: {
+            Image(systemName: image)
+                .font(.title3)
+                .foregroundStyle(isChosen ? Theme.onPrimary : Theme.ink)
+                .frame(width: 44, height: 44)
+                .background(isChosen ? Theme.forest : Theme.background, in: Circle())
+        }
+        // `.borderless` keeps each button separately tappable inside a Form row.
+        .buttonStyle(.borderless)
+        .accessibilityLabel(name)
+        .accessibilityAddTraits(isChosen ? .isSelected : [])
+    }
+}
