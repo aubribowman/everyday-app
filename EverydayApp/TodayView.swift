@@ -3,6 +3,7 @@ import SwiftData
 
 struct TodayView: View {
     @Binding var tab: AppTab
+    @Environment(CalendarStore.self) private var calendarStore
     @Query(sort: \TaskItem.createdAt) private var allItems: [TaskItem]
     @AppStorage("userName") private var userName = "Aubri Bowman"
     @State private var showingNewTask = false
@@ -14,6 +15,11 @@ struct TodayView: View {
     }
     private var openCount: Int { todayTasks.filter { !$0.isDone }.count }
     private var doneCount: Int { todayTasks.count - openCount }
+
+    private var todayEvents: [CalendarEvent] { calendarStore.events(on: .now) }
+    private var upcomingEvents: [CalendarEvent] {
+        Array(todayEvents.filter { !$0.isAllDay && $0.end > .now }.prefix(3))
+    }
 
     private var firstName: String {
         userName.split(separator: " ").first.map(String.init) ?? userName
@@ -27,6 +33,13 @@ struct TodayView: View {
         case 12..<17: "Good afternoon"
         default: "Good evening"
         }
+    }
+
+    private var summaryLine: String {
+        let things = "\(openCount) \(openCount == 1 ? "thing" : "things") to do"
+        guard calendarStore.access == .granted else { return things }
+        let count = todayEvents.count
+        return "\(count) \(count == 1 ? "event" : "events") · \(things)"
     }
 
     var body: some View {
@@ -81,7 +94,7 @@ struct TodayView: View {
             Text("A little space for today.")
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(Theme.ink)
-            Text("\(openCount) \(openCount == 1 ? "thing" : "things") to do")
+            Text(summaryLine)
                 .font(.subheadline)
                 .foregroundStyle(Theme.forest)
             HStack(spacing: 10) {
@@ -110,21 +123,23 @@ struct TodayView: View {
     private var comingUp: some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(title: "Coming up", action: "View calendar") { tab = .calendar }
-            HStack(spacing: 14) {
-                Image(systemName: "calendar.badge.plus")
-                    .font(.title3)
-                    .foregroundStyle(Theme.forest)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Your events will show up here")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Theme.ink)
-                    Text("Connect Google Calendar to see your day.")
-                        .font(.footnote)
-                        .foregroundStyle(Theme.muted)
+
+            if calendarStore.access != .granted {
+                CalendarStatusCard()
+            } else if upcomingEvents.isEmpty {
+                Text("Nothing else on your calendar today.")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.muted)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(upcomingEvents) { event in
+                        HStack(alignment: .top, spacing: 14) {
+                            TimeLabel(date: event.start)
+                            EventCard(event: event)
+                        }
+                    }
                 }
-                Spacer()
             }
-            .card()
         }
     }
 

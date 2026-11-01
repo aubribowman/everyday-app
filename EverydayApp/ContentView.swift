@@ -6,6 +6,8 @@ enum AppTab: Hashable {
 }
 
 struct ContentView: View {
+    @Environment(CalendarStore.self) private var calendarStore
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab: AppTab = .today
 
     var body: some View {
@@ -27,6 +29,10 @@ struct ContentView: View {
                 .tag(AppTab.tasks)
         }
         .tint(Theme.forest)
+        .onChange(of: scenePhase) { _, phase in
+            // Picks up changes made in iPhone Settings while the app was in the background
+            if phase == .active { calendarStore.refreshAccess() }
+        }
     }
 }
 
@@ -38,5 +44,6 @@ struct ContentView: View {
     SampleData.load(into: container.mainContext)
     return ContentView()
         .modelContainer(container)
+        .environment(CalendarStore())
         .preferredColorScheme(.light)
 }

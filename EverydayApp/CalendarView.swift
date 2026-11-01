@@ -1,7 +1,28 @@
 import SwiftUI
 import SwiftData
 
+/// One row on the day timeline: a calendar event or a task with a due time.
+enum AgendaEntry: Identifiable {
+    case event(CalendarEvent)
+    case task(TaskItem)
+
+    var id: AnyHashable {
+        switch self {
+        case .event(let event): AnyHashable(event.id)
+        case .task(let task): AnyHashable(task.persistentModelID)
+        }
+    }
+
+    var date: Date {
+        switch self {
+        case .event(let event): event.start
+        case .task(let task): task.dueDate ?? .distantFuture
+        }
+    }
+}
+
 struct CalendarView: View {
+    @Environment(CalendarStore.self) private var calendarStore
     @Query(sort: \TaskItem.createdAt) private var allItems: [TaskItem]
     @State private var selectedDay = Calendar.current.startOfDay(for: .now)
     @State private var showingNewTask = false
@@ -12,16 +33,34 @@ struct CalendarView: View {
         return (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
     }
 
-    private func items(on day: Date) -> [TaskItem] {
+    /// One EventKit fetch for the whole visible week.
+    private var weekEvents: [CalendarEvent] {
+        guard let first = weekDays.first, let last = weekDays.last,
+              let end = cal.date(byAdding: .day, value: 1, to: last) else { return [] }
+        return calendarStore.events(from: first, to: end)
+    }
+
+    private func events(on day: Date, from pool: [CalendarEvent]) -> [CalendarEvent] {
+        let start = cal.startOfDay(for: day)
+        let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
+        return pool.filter { $0.start < end && $0.end > start }
+    }
+
+    private func tasks(on day: Date) -> [TaskItem] {
         allItems.filter { item in
             guard let due = item.dueDate else { return false }
             return cal.isDate(due, inSameDayAs: day)
-        }.byDue
+        }
     }
 
-    private var dayItems: [TaskItem] { items(on: selectedDay) }
-
     var body: some View {
+        let pool = weekEvents
+        let dayEvents = events(on: selectedDay, from: pool)
+        let allDay = dayEvents.filter(\.isAllDay)
+        let entries = (dayEvents.filter { !$0.isAllDay }.map(AgendaEntry.event)
+                       + tasks(on: selectedDay).map(AgendaEntry.task))
+            .sorted { $0.date < $1.date }
+
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
@@ -34,7 +73,7 @@ struct CalendarView: View {
                         AddButton { showingNewTask = true }
                     }
 
-                    connectCard
+                    CalendarStatusCard()
 
                     HStack {
                         Text(selectedDay.formatted(.dateTime.month(.wide).year()))
@@ -50,25 +89,50 @@ struct CalendarView: View {
                     }
                     .buttonStyle(.plain)
 
-                    weekStrip
+                    weekStrip(pool: pool)
+
+                    if calendarStore.access == .granted {
+                        HStack(spacing: 16) {
+                            legend("Work", Theme.forest)
+                            legend("Personal", Theme.peachInk)
+                            legend("Reminders", Theme.lavenderInk)
+                        }
+                    }
 
                     HStack(alignment: .firstTextBaseline) {
                         Text(selectedDay.formatted(.dateTime.weekday(.wide).month(.wide).day()))
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(Theme.ink)
                         Spacer()
-                        Text("\(dayItems.count) planned")
+                        Text("\(entries.count + allDay.count) planned")
                             .font(.footnote.weight(.medium))
                             .foregroundStyle(Theme.forest)
                     }
 
-                    if dayItems.isEmpty {
+                    if !allDay.isEmpty {
+                        VStack(spacing: 8) {
+                            ForEach(allDay) { AllDayChip(event: $0) }
+                        }
+                    }
+
+                    if entries.isEmpty && allDay.isEmpty {
                         Text("Nothing planned. Tap + to add something.")
                             .font(.subheadline)
                             .foregroundStyle(Theme.muted)
                     } else {
                         VStack(spacing: 12) {
-                            ForEach(dayItems) { TimelineRow(task: $0) }
+                            ForEach(entries) { entry in
+                                HStack(alignment: .top, spacing: 14) {
+                                    TimeLabel(date: entry.date)
+                                    switch entry {
+                                    case .event(let event):
+                                        EventCard(event: event)
+                                    case .task(let task):
+                                        NavigationLink(value: task) { TaskTimelineCard(task: task) }
+                                            .buttonStyle(.plain)
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -86,31 +150,11 @@ struct CalendarView: View {
         }
     }
 
-    private var connectCard: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "calendar")
-                .foregroundStyle(Theme.forest)
-                .frame(width: 40, height: 40)
-                .background(Theme.sage, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Google Calendar")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.ink)
-                Text("Not connected yet")
-                    .font(.caption)
-                    .foregroundStyle(Theme.muted)
-            }
-            Spacer()
-            Image(systemName: "circle.dashed").foregroundStyle(Theme.muted)
-        }
-        .card()
-    }
-
-    private var weekStrip: some View {
+    private func weekStrip(pool: [CalendarEvent]) -> some View {
         HStack(spacing: 4) {
             ForEach(weekDays, id: \.self) { day in
                 let isSelected = cal.isDate(day, inSameDayAs: selectedDay)
-                let hasItems = !items(on: day).isEmpty
+                let hasItems = !events(on: day, from: pool).isEmpty || !tasks(on: day).isEmpty
                 let isToday = cal.isDateInToday(day)
 
                 Button {
@@ -138,52 +182,16 @@ struct CalendarView: View {
         }
     }
 
+    private func legend(_ label: String, _ color: Color) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 6, height: 6)
+            Text(label).font(.caption).foregroundStyle(Theme.muted)
+        }
+    }
+
     private func shiftWeek(_ direction: Int) {
         withAnimation(.snappy) {
             selectedDay = cal.date(byAdding: .day, value: 7 * direction, to: selectedDay) ?? selectedDay
         }
-    }
-}
-
-struct TimelineRow: View {
-    let task: TaskItem
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(task.dueDate?.clock ?? "")
-                    .font(.headline.weight(.medium))
-                    .foregroundStyle(Theme.ink)
-                Text(task.dueDate?.meridiem ?? "")
-                    .font(.caption)
-                    .foregroundStyle(Theme.muted)
-            }
-            .frame(width: 50, alignment: .leading)
-            .padding(.top, 16)
-
-            NavigationLink(value: task) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(task.title)
-                        .font(.headline.weight(.medium))
-                        .foregroundStyle(Theme.ink)
-                        .strikethrough(task.isDone)
-                    Text(task.timeRangeLine)
-                        .font(.footnote)
-                        .foregroundStyle(Theme.lavenderInk)
-                    Label("Reminder", systemImage: "bell")
-                        .font(.caption)
-                        .foregroundStyle(Theme.lavenderInk)
-                }
-                .padding(.leading, 12)
-                .overlay(alignment: .leading) {
-                    Capsule().fill(Theme.lavenderInk).frame(width: 3)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.lavender, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            }
-            .buttonStyle(.plain)
-        }
-        .opacity(task.isDone ? 0.5 : 1)
     }
 }
