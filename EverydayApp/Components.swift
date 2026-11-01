@@ -142,6 +142,56 @@ struct TaskRow: View {
     }
 }
 
+/// A small pill that picks which section (e.g. "Produce") an item goes in,
+/// with "New section…" to type a new one.
+struct SectionPicker: View {
+    let sections: [String]
+    @Binding var selection: String
+
+    @State private var naming = false
+    @State private var newName = ""
+
+    // Include the current choice even if no item uses it yet (a just-typed new section).
+    private var choices: [String] {
+        selection.isEmpty || sections.contains(selection) ? sections : sections + [selection]
+    }
+
+    var body: some View {
+        Menu {
+            Picker("Section", selection: $selection) {
+                Text("No section").tag("")
+                ForEach(choices, id: \.self) { Text($0).tag($0) }
+            }
+            Divider()
+            Button("New section…", systemImage: "plus") {
+                newName = ""
+                naming = true
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "tag")
+                Text(selection.isEmpty ? "No section" : selection)
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+            }
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(Theme.forest)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Theme.sage, in: Capsule())
+        }
+        .alert("New section", isPresented: $naming) {
+            TextField("e.g. Produce", text: $newName)
+            Button("Cancel", role: .cancel) {}
+            Button("Add") {
+                let name = newName.trimmingCharacters(in: .whitespaces)
+                if !name.isEmpty { selection = name }
+            }
+        }
+    }
+}
+
 struct Option<Value: Hashable>: Identifiable {
     let value: Value
     let label: String

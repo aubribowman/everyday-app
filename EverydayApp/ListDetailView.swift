@@ -24,7 +24,11 @@ struct ListContent: View {
     var onDelete: () -> Void = {}
 
     @State private var showDone = true
+    @State private var showingEdit = false
     @State private var newTitle = ""
+    @State private var newQuantity = ""
+    // Stays set after adding, so you can add several items to the same section in a row.
+    @State private var newSection = ""
     @FocusState private var adding: Bool
 
     var body: some View {
@@ -90,17 +94,30 @@ struct ListContent: View {
             }
             .card()
 
-            HStack(spacing: 10) {
-                Image(systemName: "plus").foregroundStyle(Theme.forest)
-                TextField("Add an item", text: $newTitle)
-                    .focused($adding)
-                    .submitLabel(.done)
-                    .onSubmit(addItem)
-                    .foregroundStyle(Theme.ink)
+            // Add row: which section it goes in (above, so the keyboard never hides it),
+            // then the item name and quantity.
+            VStack(alignment: .leading, spacing: 10) {
+                SectionPicker(sections: list.allSections, selection: $newSection)
+
+                HStack(spacing: 10) {
+                    Image(systemName: "plus").foregroundStyle(Theme.forest)
+                    TextField("Add an item", text: $newTitle)
+                        .focused($adding)
+                        .submitLabel(.done)
+                        .onSubmit(addItem)
+                        .foregroundStyle(Theme.ink)
+                    TextField("Qty", text: $newQuantity)
+                        .submitLabel(.done)
+                        .onSubmit(addItem)
+                        .multilineTextAlignment(.trailing)
+                        .foregroundStyle(Theme.muted)
+                        .frame(width: 70)
+                }
+                .font(.body.weight(.medium))
             }
-            .font(.body.weight(.medium))
             .padding(.horizontal, 6)
         }
+        .sheet(isPresented: $showingEdit) { NewListSheet(editing: list) }
     }
 
     private var header: some View {
@@ -112,6 +129,8 @@ struct ListContent: View {
                     .foregroundStyle(Theme.ink)
                 Spacer()
                 Menu {
+                    Button("Edit list", systemImage: "pencil") { showingEdit = true }
+                    Divider()
                     Button("Uncheck everything", systemImage: "arrow.uturn.backward") {
                         list.doneItems.forEach { $0.isDone = false }
                     }
@@ -146,10 +165,15 @@ struct ListContent: View {
     private func addItem() {
         let title = newTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
-        let item = TaskItem(title: title)
+        let item = TaskItem(
+            title: title,
+            quantity: newQuantity.trimmingCharacters(in: .whitespaces),
+            section: newSection
+        )
         context.insert(item)
         item.list = list
         newTitle = ""
+        newQuantity = ""
         adding = true   // keep the keyboard up for the next item
     }
 }

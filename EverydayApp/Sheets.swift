@@ -55,15 +55,30 @@ struct NewTaskSheet: View {
     }
 }
 
+/// Creates a new list, or edits an existing one when you pass `editing:`
+/// (rename it, change its icon, color, count label or featured setting).
 struct NewListSheet: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
-    @State private var name = ""
-    @State private var icon = "checklist"
-    @State private var tint: CardTint = .sage
-    @State private var countPhrase = "things to do"
-    @State private var isFeatured = false
+    // nil = making a new list; otherwise the list being edited.
+    private let editing: TaskList?
+
+    @State private var name: String
+    @State private var icon: String
+    @State private var tint: CardTint
+    @State private var countPhrase: String
+    @State private var isFeatured: Bool
+
+    // Start the form with the list's current values when editing, or defaults when new.
+    init(editing list: TaskList? = nil) {
+        editing = list
+        _name = State(initialValue: list?.name ?? "")
+        _icon = State(initialValue: list?.icon ?? "checklist")
+        _tint = State(initialValue: list?.tintStyle ?? .sage)
+        _countPhrase = State(initialValue: list?.countPhrase ?? "things to do")
+        _isFeatured = State(initialValue: list?.isFeatured ?? false)
+    }
 
     private let icons = ["checklist", "basket", "house", "book", "briefcase",
                          "leaf", "gift", "airplane", "heart", "pawprint"]
@@ -109,29 +124,39 @@ struct NewListSheet: View {
                 }
             }
             .tint(Theme.forest)
-            .navigationTitle("New list")
+            .navigationTitle(editing == nil ? "New list" : "Edit list")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { create() }
+                    Button(editing == nil ? "Create" : "Save") { save() }
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }
     }
 
-    private func create() {
-        let list = TaskList(
-            name: name.trimmingCharacters(in: .whitespaces),
-            icon: icon,
-            tint: tint,
-            isFeatured: isFeatured,
-            countPhrase: countPhrase
-        )
-        context.insert(list)
+    private func save() {
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        if let list = editing {
+            // Editing: copy the form's values onto the existing list. SwiftData saves it.
+            list.name = trimmedName
+            list.icon = icon
+            list.tint = tint.rawValue
+            list.countPhrase = countPhrase
+            list.isFeatured = isFeatured
+        } else {
+            let list = TaskList(
+                name: trimmedName,
+                icon: icon,
+                tint: tint,
+                isFeatured: isFeatured,
+                countPhrase: countPhrase
+            )
+            context.insert(list)
+        }
         dismiss()
     }
 }
@@ -146,7 +171,9 @@ struct ItemEditSheet: View {
             Form {
                 TextField("Item", text: $item.title)
                 TextField("Quantity (e.g. 2 pcs)", text: $item.quantity)
-                TextField("Section (e.g. Produce)", text: $item.section)
+                LabeledContent("Section") {
+                    SectionPicker(sections: item.list?.allSections ?? [], selection: $item.section)
+                }
             }
             .tint(Theme.forest)
             .navigationTitle("Edit item")

@@ -50,6 +50,15 @@ extension TaskList {
         return seen
     }
 
+    /// Every named section in this list, checked items included (for the section picker).
+    var allSections: [String] {
+        var seen: [String] = []
+        for item in sortedItems where !item.section.isEmpty && !seen.contains(item.section) {
+            seen.append(item.section)
+        }
+        return seen
+    }
+
     func openItems(in section: String) -> [TaskItem] {
         openItems.filter { $0.section == section }
     }

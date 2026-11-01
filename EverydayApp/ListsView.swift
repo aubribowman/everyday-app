@@ -5,6 +5,8 @@ struct ListsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \TaskList.createdAt) private var lists: [TaskList]
     @State private var showingNewList = false
+    // The list being edited from a tile's long-press menu (nil = none).
+    @State private var editingList: TaskList?
 
     private var tileLists: [TaskList] { lists.filter { !$0.isFeatured } }
     private var featuredLists: [TaskList] { lists.filter { $0.isFeatured } }
@@ -47,6 +49,9 @@ struct ListsView: View {
                             NavigationLink(value: list) { ListTile(list: list) }
                                 .buttonStyle(.plain)
                                 .contextMenu {
+                                    Button("Edit list", systemImage: "pencil") {
+                                        editingList = list
+                                    }
                                     Button("Delete list", systemImage: "trash", role: .destructive) {
                                         context.delete(list)
                                     }
@@ -63,6 +68,7 @@ struct ListsView: View {
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
             .navigationDestination(for: TaskItem.self) { TaskDetailView(task: $0) }
             .sheet(isPresented: $showingNewList) { NewListSheet() }
+            .sheet(item: $editingList) { NewListSheet(editing: $0) }
         }
     }
 }
