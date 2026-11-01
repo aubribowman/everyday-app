@@ -81,13 +81,13 @@ final class CalendarStore {
     }
 
     func requestAccess() async {
-        let granted: Bool = await withCheckedContinuation { continuation in
-            store.requestFullAccessToEvents { granted, _ in
+        let _: Bool = await withCheckedContinuation { continuation in
+            store.requestFullAccessToEvents { granted, error in
+                if let error { print("Calendar access error:", error) }
                 continuation.resume(returning: granted)
             }
         }
-        access = granted ? .granted : .denied
-        if granted { reload() }
+        refreshAccess()
     }
 
     func reload() {
