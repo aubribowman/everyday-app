@@ -16,23 +16,65 @@ enum Palette {
 // The token names (forest, sage, peach, lavender) are kept from the first
 // version so no other file has to change. Each comment shows what it maps to now.
 
+// Each token has a light-mode and a dark-mode color. iOS switches between them
+// automatically when the phone's appearance changes (Settings → Display & Brightness).
+// The dark colors come from the dark app icon: olive-black, sage green and soft pink.
+
 enum Theme {
     static let appName = "EverydayApp"
 
-    static let background  = Color(hex: 0xF9F6EE)   // cream page
-    static let surface     = Color(hex: 0xFFFDF8)   // warm white cards
-    static let ink         = Color(hex: 0x3B1F2B)   // deep plum text
-    static let muted       = Color(hex: 0x857B7E)   // secondary text
-    static let hairline    = Palette.linen          // borders, dividers
+    static let background  = Color(light: 0xF9F6EE, dark: 0x1C1D17)   // cream page / olive-black page
+    static let surface     = Color(light: 0xFFFDF8, dark: 0x26281F)   // warm white cards / raised dark cards
+    static let ink         = Color(light: 0x3B1F2B, dark: 0xF0EBDD)   // deep plum text / warm off-white text
+    static let muted       = Color(light: 0x857B7E, dark: 0xA29D92)   // secondary text
+    static let hairline    = Color(light: 0xE5E0D1, dark: 0x36382C)   // borders, dividers
 
-    static let forest      = Color(hex: 0x5B5D33)   // primary: Olive, deepened so white text stays readable
-    static let sage        = Color(hex: 0xE3E4D4)   // Olive tint: hero card, Work events
-    static let peach       = Color(hex: 0xF6DFE2)   // Peony tint: Personal events, avatar
-    static let peachInk    = Palette.cherry         // Cherry text on Peony
-    static let lavender    = Color(hex: 0xDCE0E9)   // Sky tint: reminders
-    static let lavenderInk = Palette.thunder        // Thunder text on Sky
-    static let lemon       = Color(hex: 0xF5E7CA)   // Lemon tint: list cards
-    static let lemonInk    = Color(hex: 0x7A5B1E)   // deep mustard text on Lemon
+    static let forest      = Color(light: 0x5B5D33, dark: 0xC9CEA6)   // primary: deep Olive / pale sage (the icon's stem)
+    static let onPrimary   = Color(light: 0xFFFFFF, dark: 0x1C1D17)   // text and icons drawn on top of `forest`
+    static let sage        = Color(light: 0xE3E4D4, dark: 0x31342A)   // Olive tint: hero card, Work events
+    static let peach       = Color(light: 0xF6DFE2, dark: 0x3D2A2E)   // Peony tint: Personal events, avatar
+    static let peachInk    = Color(light: 0x8E2A21, dark: 0xF0B3BC)   // Cherry text on Peony
+    static let lavender    = Color(light: 0xDCE0E9, dark: 0x2A2F3B)   // Sky tint: reminders
+    static let lavenderInk = Color(light: 0x434F70, dark: 0xB9C3DA)   // Thunder text on Sky
+    static let lemon       = Color(light: 0xF5E7CA, dark: 0x3A3222)   // Lemon tint: list cards
+    static let lemonInk    = Color(light: 0x7A5B1E, dark: 0xE8CC92)   // deep mustard text on Lemon
+}
+
+/// The app's Light / Dark choice in Settings. "System" follows the iPhone's own setting.
+/// Saved as text ("system", "light", "dark") so it survives app restarts.
+enum AppearanceSetting: String, CaseIterable, Identifiable {
+    case system, light, dark
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .system: "System"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+
+    /// `.unspecified` = don't force anything, let iOS decide.
+    var interfaceStyle: UIUserInterfaceStyle {
+        switch self {
+        case .system: .unspecified
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+
+    /// Applies the choice to the app's windows. (Done on the window rather than with
+    /// SwiftUI's `.preferredColorScheme`, because that leaves open sheets stuck in
+    /// the old mode when switching back to System.)
+    func apply() {
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows {
+                window.overrideUserInterfaceStyle = interfaceStyle
+            }
+        }
+    }
 }
 
 /// The card colors a list can use. Raw values stay the same so saved lists keep their color.
@@ -75,6 +117,24 @@ extension Color {
             red: Double((hex >> 16) & 0xFF) / 255,
             green: Double((hex >> 8) & 0xFF) / 255,
             blue: Double(hex & 0xFF) / 255
+        )
+    }
+
+    /// A color that switches automatically between light and dark mode.
+    init(light: UInt32, dark: UInt32) {
+        self.init(uiColor: UIColor { traits in
+            UIColor(hex: traits.userInterfaceStyle == .dark ? dark : light)
+        })
+    }
+}
+
+extension UIColor {
+    convenience init(hex: UInt32) {
+        self.init(
+            red: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: 1
         )
     }
 }

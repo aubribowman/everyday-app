@@ -40,6 +40,7 @@ struct ListsView: View {
                             Button("Load sample data") { SampleData.load(into: context) }
                                 .buttonStyle(.borderedProminent)
                                 .tint(Theme.forest)
+                                .foregroundStyle(Theme.onPrimary)
                         }
                         .padding(.top, 40)
                     }

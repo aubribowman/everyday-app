@@ -100,7 +100,7 @@ struct NewListSheet: View {
                             Button { icon = symbol } label: {
                                 Image(systemName: symbol)
                                     .font(.title3)
-                                    .foregroundStyle(icon == symbol ? Color.white : Theme.ink)
+                                    .foregroundStyle(icon == symbol ? Theme.onPrimary : Theme.ink)
                                     .frame(width: 44, height: 44)
                                     .background(icon == symbol ? Theme.forest : Theme.background, in: Circle())
                             }
@@ -177,6 +177,38 @@ struct ItemEditSheet: View {
             }
             .tint(Theme.forest)
             .navigationTitle("Edit item")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+}
+
+/// App settings, opened by tapping your initials on the Today tab.
+struct SettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("appearance") private var appearance = AppearanceSetting.system
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("Appearance", selection: $appearance) {
+                        ForEach(AppearanceSetting.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Appearance")
+                } footer: {
+                    Text("System matches your iPhone's Light or Dark setting.")
+                }
+            }
+            .tint(Theme.forest)
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

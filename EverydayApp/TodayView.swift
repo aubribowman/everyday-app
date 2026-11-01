@@ -7,6 +7,7 @@ struct TodayView: View {
     @Query(sort: \TaskItem.createdAt) private var allItems: [TaskItem]
     @AppStorage("userName") private var userName = "Aubri Bowman"
     @State private var showingNewTask = false
+    @State private var showingSettings = false
 
     private var todayTasks: [TaskItem] {
         allItems.filter { item in
@@ -61,6 +62,7 @@ struct TodayView: View {
             .navigationDestination(for: TaskItem.self) { TaskDetailView(task: $0) }
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
             .sheet(isPresented: $showingNewTask) { NewTaskSheet() }
+            .sheet(isPresented: $showingSettings) { SettingsSheet() }
         }
     }
 
@@ -76,12 +78,17 @@ struct TodayView: View {
                     .foregroundStyle(Theme.ink)
             }
             Spacer()
-            Text(initials)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.peachInk)
-                .frame(width: 44, height: 44)
-                .background(Theme.peach, in: Circle())
-                .padding(.top, 18)
+            // Tap your initials to open Settings.
+            Button { showingSettings = true } label: {
+                Text(initials)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.peachInk)
+                    .frame(width: 44, height: 44)
+                    .background(Theme.peach, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
+            .padding(.top, 18)
         }
     }
 

@@ -36,7 +36,16 @@ struct ContentView: View {
     }
 }
 
-#Preview {
+#Preview("Light") {
+    previewContent().preferredColorScheme(.light)
+}
+
+#Preview("Dark") {
+    previewContent().preferredColorScheme(.dark)
+}
+
+/// The app filled with sample data, for Xcode previews.
+private func previewContent() -> some View {
     let container = try! ModelContainer(
         for: TaskList.self, TaskItem.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
@@ -45,5 +54,4 @@ struct ContentView: View {
     return ContentView()
         .modelContainer(container)
         .environment(CalendarStore())
-        .preferredColorScheme(.light)
 }

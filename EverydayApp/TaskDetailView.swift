@@ -75,7 +75,7 @@ struct TaskDetailView: View {
                     Label(task.isDone ? "Mark as not done" : "Mark as complete",
                           systemImage: task.isDone ? "arrow.uturn.backward" : "checkmark")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.onPrimary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                         .background(Theme.forest, in: Capsule())

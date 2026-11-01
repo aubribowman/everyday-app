@@ -14,7 +14,7 @@ struct CheckBox: View {
                 if isOn {
                     Image(systemName: "checkmark")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.onPrimary)
                 }
             }
             .frame(width: 22, height: 22)
@@ -28,7 +28,7 @@ struct AddButton: View {
         Button(action: action) {
             Image(systemName: "plus")
                 .font(.title3.weight(.medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.onPrimary)
                 .frame(width: 50, height: 50)
                 .background(Theme.forest, in: Circle())
         }

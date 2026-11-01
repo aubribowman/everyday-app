@@ -166,10 +166,10 @@ struct CalendarView: View {
                         Text(day.formatted(.dateTime.day()))
                             .font(.title3.weight(.medium))
                         Circle()
-                            .fill(hasItems ? (isSelected ? Color.white : Theme.forest) : Color.clear)
+                            .fill(hasItems ? (isSelected ? Theme.onPrimary : Theme.forest) : Color.clear)
                             .frame(width: 5, height: 5)
                     }
-                    .foregroundStyle(isSelected ? Color.white : (isToday ? Theme.forest : Theme.ink))
+                    .foregroundStyle(isSelected ? Theme.onPrimary : (isToday ? Theme.forest : Theme.ink))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background {
