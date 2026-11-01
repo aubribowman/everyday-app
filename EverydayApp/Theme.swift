@@ -1,35 +1,61 @@
 import SwiftUI
 
-// MARK: - Design tokens (matched to the mockup)
+// MARK: - Palette (Saphinka Design)
+
+enum Palette {
+    static let peony   = Color(hex: 0xE5A3AD)
+    static let cherry  = Color(hex: 0x8E2A21)
+    static let sky     = Color(hex: 0x9AA7C0)
+    static let thunder = Color(hex: 0x434F70)
+    static let linen   = Color(hex: 0xE5E0D1)
+    static let lemon   = Color(hex: 0xEACE94)
+    static let olive   = Color(hex: 0x83854E)
+}
+
+// MARK: - Design tokens
+// The token names (forest, sage, peach, lavender) are kept from the first
+// version so no other file has to change. Each comment shows what it maps to now.
 
 enum Theme {
     static let appName = "EverydayApp"
 
-    static let background  = Color(hex: 0xF7F6F1)  // warm off-white page
-    static let surface     = Color.white            // cards
-    static let ink         = Color(hex: 0x1F2A24)   // primary text
-    static let muted       = Color(hex: 0x7B827C)   // secondary text
-    static let hairline    = Color(hex: 0xE8E7E0)   // card borders, dividers
-    static let forest      = Color(hex: 0x3D5C49)   // buttons, accents
-    static let sage        = Color(hex: 0xE6EDE1)   // green cards
-    static let peach       = Color(hex: 0xF7E5DA)
-    static let peachInk    = Color(hex: 0xA9644A)
-    static let lavender    = Color(hex: 0xECEAF5)
-    static let lavenderInk = Color(hex: 0x6E6A99)
+    static let background  = Color(hex: 0xF9F6EE)   // cream page
+    static let surface     = Color(hex: 0xFFFDF8)   // warm white cards
+    static let ink         = Color(hex: 0x3B1F2B)   // deep plum text
+    static let muted       = Color(hex: 0x857B7E)   // secondary text
+    static let hairline    = Palette.linen          // borders, dividers
+
+    static let forest      = Color(hex: 0x5B5D33)   // primary: Olive, deepened so white text stays readable
+    static let sage        = Color(hex: 0xE3E4D4)   // Olive tint: hero card, Work events
+    static let peach       = Color(hex: 0xF6DFE2)   // Peony tint: Personal events, avatar
+    static let peachInk    = Palette.cherry         // Cherry text on Peony
+    static let lavender    = Color(hex: 0xDCE0E9)   // Sky tint: reminders
+    static let lavenderInk = Palette.thunder        // Thunder text on Sky
+    static let lemon       = Color(hex: 0xF5E7CA)   // Lemon tint: list cards
+    static let lemonInk    = Color(hex: 0x7A5B1E)   // deep mustard text on Lemon
 }
 
-/// The three card colors a list can use.
+/// The card colors a list can use. Raw values stay the same so saved lists keep their color.
 enum CardTint: String, CaseIterable, Identifiable {
-    case sage, peach, lavender
+    case sage, peach, lavender, lemon
 
     var id: String { rawValue }
-    var label: String { rawValue.capitalized }
+
+    var label: String {
+        switch self {
+        case .sage: "Olive"
+        case .peach: "Peony"
+        case .lavender: "Sky"
+        case .lemon: "Lemon"
+        }
+    }
 
     var fill: Color {
         switch self {
         case .sage: Theme.sage
         case .peach: Theme.peach
         case .lavender: Theme.lavender
+        case .lemon: Theme.lemon
         }
     }
 
@@ -38,6 +64,7 @@ enum CardTint: String, CaseIterable, Identifiable {
         case .sage: Theme.forest
         case .peach: Theme.peachInk
         case .lavender: Theme.lavenderInk
+        case .lemon: Theme.lemonInk
         }
     }
 }
