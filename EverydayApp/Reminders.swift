@@ -52,7 +52,7 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
 
         let content = UNMutableNotificationContent()
         content.title = task.title
-        content.body = task.timeRangeLine.isEmpty ? "Reminder" : task.timeRangeLine
+        content.body = task.timeLine.isEmpty ? "Reminder" : task.timeLine
         content.sound = .default
 
         // Which parts of the date must match for the notification to fire.

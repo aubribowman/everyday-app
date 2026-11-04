@@ -1,17 +1,29 @@
 import SwiftUI
 import SwiftData
 
+/// What the + menu is making. A reminder is a task with a time and a notification;
+/// a plain task starts without a date (you can still add one).
+enum NewTaskKind: String, Identifiable {
+    case task, reminder
+    var id: String { rawValue }
+}
+
 struct NewTaskSheet: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
+    private let kind: NewTaskKind
     @State private var title = ""
-    @State private var hasDate = true
+    @State private var hasDate: Bool
     @State private var date: Date
+    @State private var remindMinutes = 0
     @State private var icon = ""
 
     /// Pass a day from the calendar to default to 9 AM that day; otherwise the next full hour.
-    init(defaultDate: Date? = nil) {
+    init(kind: NewTaskKind = .task, defaultDate: Date? = nil) {
+        self.kind = kind
+        // Reminders always have a time; tasks from the calendar get that day's date.
+        _hasDate = State(initialValue: kind == .reminder || defaultDate != nil)
         let cal = Calendar.current
         let start: Date
         if let defaultDate, !cal.isDateInToday(defaultDate) {
@@ -27,10 +39,15 @@ struct NewTaskSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("What needs doing?", text: $title)
-                    Toggle("Date & time", isOn: $hasDate)
+                    TextField(kind == .reminder ? "Remind me to…" : "What needs doing?", text: $title)
+                    if kind == .task {
+                        Toggle("Date & time", isOn: $hasDate)
+                    }
                     if hasDate {
                         DatePicker("When", selection: $date)
+                        Picker("Remind me", selection: $remindMinutes) {
+                            ForEach(TaskDetailView.remindOptions) { Text($0.label).tag($0.value) }
+                        }
                     }
                 }
 
@@ -39,7 +56,7 @@ struct NewTaskSheet: View {
                 }
             }
             .tint(Theme.forest)
-            .navigationTitle("New task")
+            .navigationTitle(kind == .reminder ? "New reminder" : "New task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -51,13 +68,13 @@ struct NewTaskSheet: View {
                 }
             }
         }
-        // Opens halfway; drag up to see all the icons.
-        .presentationDetents([.medium, .large])
+        // No `.presentationDetents` here, so the sheet opens at full height.
     }
 
     private func add() {
         let task = TaskItem(title: title.trimmingCharacters(in: .whitespaces))
         task.dueDate = hasDate ? date : nil
+        task.remindMinutesBefore = remindMinutes
         task.icon = icon
         context.insert(task)
         dismiss()

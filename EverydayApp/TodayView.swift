@@ -6,7 +6,8 @@ struct TodayView: View {
     @Environment(CalendarStore.self) private var calendarStore
     @Query(sort: \TaskItem.createdAt) private var allItems: [TaskItem]
     @AppStorage("userName") private var userName = "Aubri Bowman"
-    @State private var showingNewTask = false
+    @State private var newKind: NewTaskKind?       // task or reminder being added
+    @State private var showingNewEvent = false
     @State private var showingSettings = false
     @State private var editingEvent: CalendarEvent?
 
@@ -68,7 +69,8 @@ struct TodayView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: TaskItem.self) { TaskDetailView(task: $0) }
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
-            .sheet(isPresented: $showingNewTask) { NewTaskSheet() }
+            .sheet(item: $newKind) { NewTaskSheet(kind: $0) }
+            .sheet(isPresented: $showingNewEvent) { EventEditSheet().environment(calendarStore) }
             .sheet(isPresented: $showingSettings) { SettingsSheet() }
             .sheet(item: $editingEvent) { EventEditSheet(editing: $0).environment(calendarStore) }
         }
@@ -180,7 +182,12 @@ struct TodayView: View {
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
             Spacer()
-            AddButton { showingNewTask = true }
+            // + opens a menu: a task, a reminder (task with a time + notification), or a calendar event.
+            AddMenu(
+                onTask: { newKind = .task },
+                onReminder: { newKind = .reminder },
+                onEvent: { showingNewEvent = true }
+            )
         }
     }
 }

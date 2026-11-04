@@ -26,6 +26,7 @@ struct EventEditSheet: View {
             draft.location = event.location
             draft.notes = event.notes
             draft.calendarID = event.calendarID
+            draft.alertMinutes = event.alertMinutes
         } else {
             let start = Self.defaultStart(on: defaultDate)
             draft.start = start
@@ -78,6 +79,19 @@ struct EventEditSheet: View {
                 }
 
                 Section {
+                    Picker("Alert", selection: alertBinding) {
+                        Text("None").tag(Int?.none)
+                        ForEach(alertOptions) { Text($0.label).tag(Optional($0.value)) }
+                        // Keep an alert set elsewhere (e.g. Google) that isn't one of our choices.
+                        if let minutes = draft.alertMinutes, !alertOptions.contains(where: { $0.value == minutes }) {
+                            Text("\(minutes) minutes before").tag(Optional(minutes))
+                        }
+                    }
+                } footer: {
+                    Text("Your iPhone's Calendar app sends the notification.")
+                }
+
+                Section {
                     Picker("Calendar", selection: $draft.calendarID) {
                         ForEach(store.writableCalendars, id: \.calendarIdentifier) { calendar in
                             Text(calendar.title).tag(calendar.calendarIdentifier)
@@ -117,6 +131,12 @@ struct EventEditSheet: View {
                 let length = max(draft.end.timeIntervalSince(oldStart), 0)
                 draft.end = newStart.addingTimeInterval(length)
             }
+            // Switching All-day swaps the alert to a fitting choice (if there was one).
+            .onChange(of: draft.isAllDay) { _, allDay in
+                guard draft.alertMinutes != nil else { return }
+                draft.alertMinutes = allDay ? -540 : 15
+                draft.alertEdited = true
+            }
             // New events go in the phone's default calendar unless you pick another.
             .onAppear(perform: pickDefaultCalendar)
             .onChange(of: store.access) { pickDefaultCalendar() }
@@ -131,6 +151,26 @@ struct EventEditSheet: View {
                 Text(errorMessage ?? "")
             }
         }
+    }
+
+    // Minutes before the start. For all-day events the start is midnight, so
+    // -540 means 9 AM that day and 900 means 9 AM the day before.
+    private var alertOptions: [Option<Int>] {
+        draft.isAllDay
+            ? [Option(value: -540, label: "On the day (9 AM)"),
+               Option(value: 900, label: "1 day before (9 AM)"),
+               Option(value: 2340, label: "2 days before (9 AM)")]
+            : [Option(value: 0, label: "At time of event"),
+               Option(value: 5, label: "5 minutes before"),
+               Option(value: 15, label: "15 minutes before"),
+               Option(value: 30, label: "30 minutes before"),
+               Option(value: 60, label: "1 hour before"),
+               Option(value: 1440, label: "1 day before")]
+    }
+
+    private var alertBinding: Binding<Int?> {
+        Binding(get: { draft.alertMinutes },
+                set: { draft.alertMinutes = $0; draft.alertEdited = true })
     }
 
     private var showingError: Binding<Bool> {

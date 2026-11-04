@@ -75,7 +75,7 @@ struct TaskTimelineCard: View {
                 .font(.headline.weight(.medium))
                 .foregroundStyle(Theme.ink)
                 .strikethrough(task.isDone)
-            Text(task.timeRangeLine)
+            Text(task.timeLine)
                 .font(.footnote)
                 .foregroundStyle(Theme.lavenderInk)
             Label("Reminder", systemImage: "bell")

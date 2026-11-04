@@ -119,11 +119,10 @@ extension TaskItem {
         return parts.joined(separator: " · ")
     }
 
-    /// "5:00–5:30 · Greenway Market"
-    var timeRangeLine: String {
+    /// "5:00 PM · Greenway Market": just the time you picked, plus the place if there is one.
+    var timeLine: String {
         guard let dueDate else { return "" }
-        let end = dueDate.addingTimeInterval(30 * 60)
-        var line = "\(dueDate.clock)–\(end.clock)"
+        var line = dueDate.timeText
         if !place.isEmpty { line += " · \(place)" }
         return line
     }

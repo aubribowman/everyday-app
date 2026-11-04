@@ -28,6 +28,7 @@ struct CalendarEvent: Identifiable, Hashable {
     let calendarID: String
     let canEdit: Bool         // false for read-only calendars like Holidays or Birthdays
     let isRepeating: Bool
+    let alertMinutes: Int?    // first alert, in minutes before the start (nil = no alert)
 
     /// "10:00–10:30 · Work calendar"
     var subtitle: String {
@@ -159,7 +160,10 @@ final class CalendarStore {
             eventID: event.eventIdentifier ?? "",
             calendarID: event.calendar.calendarIdentifier,
             canEdit: event.calendar.allowsContentModifications,
-            isRepeating: event.hasRecurrenceRules
+            isRepeating: event.hasRecurrenceRules,
+            // relativeOffset is in seconds and negative for "before", e.g. -900 = 15 minutes before.
+            alertMinutes: event.alarms?.first { $0.absoluteDate == nil }
+                .map { Int(-$0.relativeOffset / 60) }
         )
     }
 
@@ -174,6 +178,8 @@ final class CalendarStore {
         var location = ""
         var notes = ""
         var calendarID = ""
+        var alertMinutes: Int? = 15     // minutes before the start; nil = no alert
+        var alertEdited = false         // only replace an event's alerts if you changed this
     }
 
     enum WriteError: LocalizedError {
@@ -216,6 +222,11 @@ final class CalendarStore {
         event.location = draft.location.isEmpty ? nil : draft.location
         event.notes = draft.notes.isEmpty ? nil : draft.notes
         event.calendar = calendar
+        // The alert becomes a notification from the Calendar app. When editing, alerts are left
+        // alone unless you changed the picker, so extra alerts set in Google aren't lost.
+        if existing == nil || draft.alertEdited {
+            event.alarms = draft.alertMinutes.map { [EKAlarm(relativeOffset: TimeInterval(-$0 * 60))] }
+        }
         // `.thisEvent` = for a repeating event, only this one occurrence changes.
         try store.save(event, span: .thisEvent, commit: true)
         reload()
@@ -261,7 +272,7 @@ final class CalendarStore {
         let event = existing ?? EKEvent(eventStore: store)
         event.title = task.title
         event.startDate = due
-        event.endDate = due.addingTimeInterval(30 * 60)
+        event.endDate = due   // just the time you picked, no length
         event.isAllDay = false
         event.location = task.location.isEmpty ? nil : task.location
         event.notes = task.notes.isEmpty ? nil : task.notes

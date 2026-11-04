@@ -25,7 +25,7 @@ struct CalendarView: View {
     @Environment(CalendarStore.self) private var calendarStore
     @Query(sort: \TaskItem.createdAt) private var allItems: [TaskItem]
     @State private var selectedDay = Calendar.current.startOfDay(for: .now)
-    @State private var showingNewTask = false
+    @State private var newKind: NewTaskKind?
     @State private var showingNewEvent = false
     @State private var editingEvent: CalendarEvent?
     private let cal = Calendar.mondayFirst
@@ -75,13 +75,11 @@ struct CalendarView: View {
                             .tracking(-0.5)
                             .foregroundStyle(Theme.ink)
                         Spacer()
-                        Menu {
-                            Button("New task", systemImage: "checkmark.circle") { showingNewTask = true }
-                            Button("New event", systemImage: "calendar.badge.plus") { showingNewEvent = true }
-                        } label: {
-                            AddButtonLabel()
-                        }
-                        .accessibilityLabel("Add")
+                        AddMenu(
+                            onTask: { newKind = .task },
+                            onReminder: { newKind = .reminder },
+                            onEvent: { showingNewEvent = true }
+                        )
                     }
 
                     CalendarStatusCard()
@@ -165,7 +163,7 @@ struct CalendarView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: TaskItem.self) { TaskDetailView(task: $0) }
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
-            .sheet(isPresented: $showingNewTask) { NewTaskSheet(defaultDate: selectedDay) }
+            .sheet(item: $newKind) { NewTaskSheet(kind: $0, defaultDate: selectedDay) }
             .sheet(isPresented: $showingNewEvent) {
                 EventEditSheet(defaultDate: selectedDay).environment(calendarStore)
             }

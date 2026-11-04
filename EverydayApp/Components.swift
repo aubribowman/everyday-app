@@ -33,6 +33,24 @@ struct AddButton: View {
     }
 }
 
+/// The round green + that asks what to add: a task, a reminder or a calendar event.
+struct AddMenu: View {
+    var onTask: () -> Void
+    var onReminder: () -> Void
+    var onEvent: () -> Void
+
+    var body: some View {
+        Menu {
+            Button("New task", systemImage: "checkmark.circle", action: onTask)
+            Button("New reminder", systemImage: "bell", action: onReminder)
+            Button("New event", systemImage: "calendar.badge.plus", action: onEvent)
+        } label: {
+            AddButtonLabel()
+        }
+        .accessibilityLabel("Add")
+    }
+}
+
 /// The round green "+" look, shared by AddButton and the add menu on the Calendar tab.
 struct AddButtonLabel: View {
     var body: some View {
