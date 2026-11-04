@@ -1,7 +1,7 @@
 # Everyday
 
-A calm iPhone app for your day: tasks, reminders, lists, your calendar and the books and shows
-you want to get to, all in one place.
+A calm iPhone app for your day: tasks, reminders, lists, your calendar and the books, shows
+and restaurants you want to get to, all in one place.
 Built with SwiftUI and SwiftData.
 
 <p align="center">
@@ -53,9 +53,10 @@ be renamed and given their own icon and color.
 </p>
 
 ### Library
-Save books you want to read and TV shows you want to watch. Each one moves from
-**Want to read** to **Reading** to **Finished** (or the watching versions for shows) with a
-single tap, and can hold the author or streaming service plus a note.
+Save books you want to read, TV shows you want to watch and restaurants you want to try.
+Books and shows move from **Want to read** to **Reading** to **Finished** (or the watching
+versions) with a single tap; restaurants go from **Want to try** to **Been there**. Give each a
+genre or cuisine, filter by it, and rate what you've finished with 1–5 stars.
 
 ### Light and dark mode
 Follows your iPhone's setting, or pick Light or Dark yourself by tapping your initials on the
@@ -82,9 +83,10 @@ The app asks for two permissions:
 | `TodayView.swift`, `CalendarView.swift`, `ListsView.swift`, `LibraryView.swift`, `TasksView.swift` | The five main screens |
 | `TaskDetailView.swift`, `ListDetailView.swift` | Screens for a single task or list |
 | `Sheets.swift`, `EventEditSheet.swift`, `CalendarSettingsSheet.swift` | Pop-up screens for adding and editing |
-| `Models.swift` | Tasks, lists, and Library books and shows, including the repeat logic |
+| `Models.swift` | Tasks, lists, and Library books, shows and restaurants, including the repeat logic |
 | `CalendarStore.swift` | Reads and writes calendar events through Apple's EventKit |
 | `Reminders.swift` | Schedules task notifications |
 | `Components.swift`, `EventCard.swift` | Reusable pieces like checkboxes, rows and cards |
+| `Profile.swift` | Your profile picture: saving it and drawing the round avatar |
 | `Theme.swift` | Colors (light and dark), date formatting and appearance settings |
 | `SampleData.swift` | The demo data behind **Load sample data** |

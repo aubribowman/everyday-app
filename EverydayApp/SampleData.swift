@@ -76,17 +76,22 @@ enum SampleData {
         task("Plan the weekend", at: at(10, daysFromNow: 2), icon: "sun.max")
         task("Book a dentist appointment", at: nil, icon: "phone")
 
-        // Library: books and shows
-        func save(_ title: String, _ creator: String, _ kind: LibraryKind, _ status: LibraryStatus) {
-            context.insert(LibraryItem(title: title, creator: creator, kind: kind, status: status))
+        // Library: books, shows and restaurants
+        func save(_ title: String, _ creator: String, _ kind: LibraryKind, _ status: LibraryStatus,
+                  _ genre: String, rating: Int = 0) {
+            context.insert(LibraryItem(title: title, creator: creator, kind: kind, status: status,
+                                       genre: genre, rating: rating))
         }
-        save("Project Hail Mary", "Andy Weir", .book, .want)
-        save("The Thursday Murder Club", "Richard Osman", .book, .want)
-        save("Tomorrow, and Tomorrow, and Tomorrow", "Gabrielle Zevin", .book, .active)
-        save("Tom Lake", "Ann Patchett", .book, .done)
-        save("Severance", "Apple TV", .show, .want)
-        save("The Bear", "Hulu", .show, .want)
-        save("Slow Horses", "Apple TV", .show, .active)
-        save("Abbott Elementary", "Hulu", .show, .done)
+        save("Project Hail Mary", "Andy Weir", .book, .want, "Sci-fi & fantasy")
+        save("The Thursday Murder Club", "Richard Osman", .book, .want, "Mystery & thriller")
+        save("Tomorrow, and Tomorrow, and Tomorrow", "Gabrielle Zevin", .book, .active, "Literary fiction")
+        save("Tom Lake", "Ann Patchett", .book, .done, "Literary fiction", rating: 5)
+        save("Severance", "Apple TV", .show, .want, "Sci-fi & fantasy")
+        save("The Bear", "Hulu", .show, .want, "Drama")
+        save("Slow Horses", "Apple TV", .show, .active, "Thriller")
+        save("Abbott Elementary", "Hulu", .show, .done, "Comedy", rating: 4)
+        save("Little Olive", "Downtown", .restaurant, .want, "Mediterranean")
+        save("Sora Ramen", "Eastside", .restaurant, .want, "Japanese")
+        save("Casa Verde", "Old Town", .restaurant, .done, "Mexican", rating: 4)
     }
 }

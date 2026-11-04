@@ -179,50 +179,122 @@ extension Array where Element == TaskItem {
     }
 }
 
-// MARK: Library (books and TV shows)
+// MARK: Library (books, TV shows and restaurants)
 
-/// Books or TV shows: the two halves of the Library tab.
+/// The three sections of the Library tab.
 enum LibraryKind: String, CaseIterable, Identifiable {
-    case book, show
+    case book, show, restaurant
     var id: String { rawValue }
-    var label: String { self == .book ? "Books" : "TV shows" }
-    var icon: String { self == .book ? "book.closed" : "tv" }
-    var creatorPrompt: String { self == .book ? "Author (optional)" : "Where to watch, e.g. Netflix (optional)" }
+
+    var label: String {
+        switch self {
+        case .book: "Books"
+        case .show: "TV shows"
+        case .restaurant: "Restaurants"
+        }
+    }
+    /// Used in titles like "New book" / "Edit restaurant".
+    var singular: String {
+        switch self {
+        case .book: "book"
+        case .show: "show"
+        case .restaurant: "restaurant"
+        }
+    }
+    var emptyIcon: String {
+        switch self {
+        case .book: "books.vertical"
+        case .show: "tv"
+        case .restaurant: "fork.knife"
+        }
+    }
+    var emptyMessage: String {
+        switch self {
+        case .book: "Tap + to save a book you want to read."
+        case .show: "Tap + to save a show you want to watch."
+        case .restaurant: "Tap + to save a place you want to try."
+        }
+    }
+    /// The second text field: who wrote it, where to watch it, or where the place is.
+    var creatorPrompt: String {
+        switch self {
+        case .book: "Author (optional)"
+        case .show: "Where to watch, e.g. Netflix (optional)"
+        case .restaurant: "Neighborhood or address (optional)"
+        }
+    }
+    var notesPrompt: String {
+        switch self {
+        case .book: "Who recommended it, why it caught your eye…"
+        case .show: "Which season you're on, who recommended it…"
+        case .restaurant: "What to order, who to go with…"
+        }
+    }
+    /// "Genre" for books and shows, "Cuisine" for restaurants.
+    var genreLabel: String { self == .restaurant ? "Cuisine" : "Genre" }
+
+    /// Ready-made choices; you can also type your own.
+    var genres: [String] {
+        switch self {
+        case .book:
+            ["Fiction", "Mystery & thriller", "Romance", "Sci-fi & fantasy", "Historical fiction",
+             "Literary fiction", "Memoir & biography", "Nonfiction", "Self-help", "Poetry"]
+        case .show:
+            ["Drama", "Comedy", "Crime", "Sci-fi & fantasy", "Thriller", "Documentary",
+             "Reality", "Animation", "Romance", "Horror"]
+        case .restaurant:
+            ["American", "Italian", "Mexican", "Japanese", "Chinese", "Thai", "Indian",
+             "Mediterranean", "French", "Korean", "Vietnamese", "Café & bakery", "Brunch", "Bar"]
+        }
+    }
+
+    /// Restaurants skip the middle step: you either want to try a place or you've been.
+    var statuses: [LibraryStatus] {
+        self == .restaurant ? [.want, .done] : LibraryStatus.allCases
+    }
 }
 
-/// Where you are with a book or show.
+/// Where you are with something.
 enum LibraryStatus: String, CaseIterable, Identifiable {
     case want, active, done
     var id: String { rawValue }
 
-    /// "Want to read" / "Reading" / "Finished" (or the watching versions for shows).
+    /// "Want to read" / "Reading" / "Finished", and the versions for shows and restaurants.
     func label(for kind: LibraryKind) -> String {
         switch (self, kind) {
-        case (.want, .book):   "Want to read"
-        case (.want, .show):   "Want to watch"
-        case (.active, .book): "Reading"
-        case (.active, .show): "Watching"
-        case (.done, _):       "Finished"
+        case (.want, .book):         "Want to read"
+        case (.want, .show):         "Want to watch"
+        case (.want, .restaurant):   "Want to try"
+        case (.active, .book):       "Reading"
+        case (.active, .show):       "Watching"
+        case (.active, .restaurant): "Going soon"
+        case (.done, .restaurant):   "Been there"
+        case (.done, _):             "Finished"
         }
     }
 }
 
-/// One book or TV show on the Library tab.
+/// One book, TV show or restaurant on the Library tab.
 @Model
 final class LibraryItem {
     var title: String = ""
-    var creator: String = ""       // author for books, streaming service for shows
+    var creator: String = ""       // author, streaming service, or neighborhood
     var kind: String = "book"      // LibraryKind raw value
     var status: String = "want"    // LibraryStatus raw value
-    var notes: String = ""         // who recommended it, which season you're on...
+    var genre: String = ""         // genre or cuisine ("" = none)
+    var rating: Int = 0            // 1–5 stars, 0 = not rated
+    var notes: String = ""
     var createdAt: Date = Date.now
     var statusChangedAt: Date = Date.now   // newest-first ordering within each section
 
-    init(title: String, creator: String = "", kind: LibraryKind, status: LibraryStatus = .want) {
+    init(title: String, creator: String = "", kind: LibraryKind, status: LibraryStatus = .want,
+         genre: String = "", rating: Int = 0) {
         self.title = title
         self.creator = creator
         self.kind = kind.rawValue
         self.status = status.rawValue
+        self.genre = genre
+        self.rating = rating
         self.createdAt = .now
         self.statusChangedAt = .now
     }
@@ -234,5 +306,10 @@ final class LibraryItem {
             status = newValue.rawValue
             statusChangedAt = .now
         }
+    }
+
+    /// "Andy Weir · Sci-fi & fantasy"
+    var detailLine: String {
+        [creator, genre].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }

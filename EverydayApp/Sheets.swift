@@ -210,6 +210,8 @@ struct SettingsSheet: View {
     @State private var pickedPhoto: PhotosPickerItem?
     @State private var hasPhoto = ProfilePhoto.load() != nil
     @State private var photoError = false
+    // The photo still being loaded, so it can be cancelled if you pick again or tap Remove.
+    @State private var photoLoad: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -224,6 +226,7 @@ struct SettingsSheet: View {
                         }
                         if hasPhoto {
                             Button("Remove photo", role: .destructive) {
+                                photoLoad?.cancel()
                                 ProfilePhoto.remove()
                                 hasPhoto = false
                                 photoVersion += 1
@@ -266,9 +269,12 @@ struct SettingsSheet: View {
             // When a photo is picked: load it, crop and shrink it, then save it.
             .onChange(of: pickedPhoto) { _, item in
                 guard let item else { return }
-                Task {
-                    if let data = try? await item.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data),
+                photoLoad?.cancel()
+                photoLoad = Task {
+                    let data = try? await item.loadTransferable(type: Data.self)
+                    // Picked another photo or tapped Remove while this one loaded? Drop it.
+                    guard !Task.isCancelled else { return }
+                    if let data, let image = UIImage(data: data),
                        (try? ProfilePhoto.save(image)) != nil {
                         hasPhoto = true
                         photoVersion += 1
