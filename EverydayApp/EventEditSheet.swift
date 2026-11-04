@@ -15,7 +15,9 @@ struct EventEditSheet: View {
     @State private var confirmingDelete = false
 
     /// Pass `editing:` to edit an event, or `defaultDate:` to start a new one on that day.
-    init(editing event: CalendarEvent? = nil, defaultDate: Date? = nil) {
+    /// `prefill:` starts a new event with these details already filled in.
+    init(editing event: CalendarEvent? = nil, defaultDate: Date? = nil,
+         prefill: CalendarStore.EventDraft? = nil) {
         editing = event
         var draft = CalendarStore.EventDraft()
         if let event {
@@ -27,6 +29,8 @@ struct EventEditSheet: View {
             draft.notes = event.notes
             draft.calendarID = event.calendarID
             draft.alertMinutes = event.alertMinutes
+        } else if let prefill {
+            draft = prefill
         } else {
             let start = Self.defaultStart(on: defaultDate)
             draft.start = start

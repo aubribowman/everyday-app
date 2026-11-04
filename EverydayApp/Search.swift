@@ -98,7 +98,7 @@ struct SearchSheet: View {
             .navigationDestination(for: TaskItem.self) { TaskDetailView(task: $0) }
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
             .sheet(item: $editingEvent) { EventEditSheet(editing: $0).environment(calendarStore) }
-            .sheet(item: $editingLibraryItem) { LibraryItemSheet(editing: $0) }
+            .sheet(item: $editingLibraryItem) { LibraryItemSheet(editing: $0).environment(calendarStore) }
             // Events from 3 months back to a year ahead.
             .onAppear {
                 let start = Calendar.current.date(byAdding: .month, value: -3, to: .now) ?? .now

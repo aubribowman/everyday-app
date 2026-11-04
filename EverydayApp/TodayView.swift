@@ -5,11 +5,21 @@ struct TodayView: View {
     @Binding var tab: AppTab
     @Environment(CalendarStore.self) private var calendarStore
     @Query(sort: \TaskItem.createdAt) private var allItems: [TaskItem]
+    // Newest change first, so the book you started most recently is the one shown.
+    @Query(sort: \LibraryItem.statusChangedAt, order: .reverse) private var library: [LibraryItem]
     @AppStorage("userName") private var userName = "Aubri Bowman"
     @State private var newKind: NewTaskKind?       // task or reminder being added
     @State private var showingNewEvent = false
     @State private var showingSettings = false
     @State private var editingEvent: CalendarEvent?
+    @State private var openLibraryItem: LibraryItem?
+
+    /// The book you're reading and the show you're watching (the latest of each).
+    private var upNext: [LibraryItem] {
+        [LibraryKind.book, .show].compactMap { kind in
+            library.first { $0.kindValue == kind && $0.statusValue == .active }
+        }
+    }
 
     private var todayTasks: [TaskItem] {
         allItems.filter { item in
@@ -54,6 +64,7 @@ struct TodayView: View {
                     hero
                     comingUp
                     onYourList
+                    if !upNext.isEmpty { upNextCard }
                     footer
                 }
                 .padding(.horizontal, 20)
@@ -70,6 +81,7 @@ struct TodayView: View {
             .sheet(isPresented: $showingNewEvent) { EventEditSheet().environment(calendarStore) }
             .sheet(isPresented: $showingSettings) { SettingsSheet() }
             .sheet(item: $editingEvent) { EventEditSheet(editing: $0).environment(calendarStore) }
+            .sheet(item: $openLibraryItem) { LibraryItemSheet(editing: $0).environment(calendarStore) }
         }
     }
 
@@ -168,6 +180,42 @@ struct TodayView: View {
                     .padding(.vertical, 12)
             } else {
                 DividedStack(items: todayTasks) { TaskRow(task: $0) }
+            }
+        }
+    }
+
+    /// "Up next": what you're in the middle of reading or watching. Tap one to open it.
+    private var upNextCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SectionHeader(title: "Up next", action: "See all") { tab = .library }
+            DividedStack(items: upNext) { item in
+                Button { openLibraryItem = item } label: {
+                    HStack(spacing: 12) {
+                        CoverImage(url: item.cover, kind: item.kindValue, width: 36)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.statusValue.label(for: item.kindValue).uppercased())
+                                .font(.caption2.weight(.semibold))
+                                .tracking(0.4)
+                                .foregroundStyle(Theme.forest)
+                            Text(item.title)
+                                .foregroundStyle(Theme.ink)
+                                .lineLimit(1)
+                            if !item.creator.isEmpty {
+                                Text(item.creator)
+                                    .font(.footnote)
+                                    .foregroundStyle(Theme.muted)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.muted)
+                    }
+                    .padding(.vertical, 10)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
     }

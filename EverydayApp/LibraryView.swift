@@ -6,6 +6,7 @@ import MapKit
 /// are in the middle of, or have finished (with a star rating).
 struct LibraryView: View {
     @Environment(\.modelContext) private var context
+    @Environment(CalendarStore.self) private var calendarStore
     // Newest change first, so something you just started or finished is at the top of its section.
     @Query(sort: \LibraryItem.statusChangedAt, order: .reverse) private var items: [LibraryItem]
 
@@ -14,6 +15,7 @@ struct LibraryView: View {
     @State private var genreFilter: String?        // nil = all genres
     @State private var adding = false
     @State private var editing: LibraryItem?
+    @State private var planning: LibraryItem?      // restaurant you're planning a visit to
     /// Folded-away sections, remembered between launches, e.g. "book.want,show.done".
     /// Finished starts folded so the list stays focused on what's next.
     @AppStorage("libraryCollapsed") private var collapsedRaw = "book.done,show.done,restaurant.done"
@@ -77,8 +79,9 @@ struct LibraryView: View {
             .toolbar(.hidden, for: .navigationBar)
             // Switching sections clears the genre filter, since genres differ.
             .onChange(of: kind) { genreFilter = nil }
-            .sheet(isPresented: $adding) { LibraryItemSheet(kind: kind) }
-            .sheet(item: $editing) { LibraryItemSheet(editing: $0) }
+            .sheet(isPresented: $adding) { LibraryItemSheet(kind: kind).environment(calendarStore) }
+            .sheet(item: $editing) { LibraryItemSheet(editing: $0).environment(calendarStore) }
+            .sheet(item: $planning) { PlanVisitSheet(restaurant: $0).environment(calendarStore) }
         }
     }
 
@@ -157,7 +160,8 @@ struct LibraryView: View {
 
     private func card(_ list: [LibraryItem]) -> some View {
         DividedStack(items: list) { item in
-            LibraryRow(item: item, onEdit: { editing = $0 }, onDelete: { context.delete($0) })
+            LibraryRow(item: item, onEdit: { editing = $0 }, onDelete: { context.delete($0) },
+                       onPlan: { planning = $0 })
         }
         .padding(.horizontal, 16)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -171,6 +175,7 @@ struct LibraryRow: View {
     @Bindable var item: LibraryItem
     let onEdit: (LibraryItem) -> Void
     let onDelete: (LibraryItem) -> Void
+    var onPlan: ((LibraryItem) -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -193,6 +198,9 @@ struct LibraryRow: View {
         .contextMenu {
             ForEach(item.kindValue.statuses.filter { $0 != item.statusValue }) { status in
                 Button("Move to \(status.label(for: item.kindValue))") { move(to: status) }
+            }
+            if item.kindValue == .restaurant, let onPlan {
+                Button("Plan a visit", systemImage: "calendar.badge.plus") { onPlan(item) }
             }
             Divider()
             Button("Edit", systemImage: "pencil") { onEdit(item) }
@@ -258,6 +266,7 @@ struct StarRating: View {
 struct LibraryItemSheet: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(CalendarStore.self) private var calendarStore
 
     private let editing: LibraryItem?
 
@@ -271,6 +280,7 @@ struct LibraryItemSheet: View {
     @State private var coverURL: String
     @State private var typingGenre = false
     @State private var customGenre = ""
+    @State private var planningVisit = false
 
     // Matches found while you type the title.
     @State private var suggestions: [LookupResult] = []
@@ -357,6 +367,17 @@ struct LibraryItemSheet: View {
                 Section("Notes") {
                     TextField(kind.notesPrompt, text: $notes, axis: .vertical)
                         .lineLimit(3...8)
+                }
+
+                if let editing, kind == .restaurant {
+                    Section {
+                        Button("Plan a visit", systemImage: "calendar.badge.plus") { planningVisit = true }
+                    } footer: {
+                        Text("Adds it to your calendar, with the place as the location.")
+                    }
+                    .sheet(isPresented: $planningVisit) {
+                        PlanVisitSheet(restaurant: editing).environment(calendarStore)
+                    }
                 }
 
                 if let editing {
@@ -488,5 +509,32 @@ struct LibraryItemSheet: View {
         if item.statusValue != status { item.statusValue = status }
         if editing == nil { context.insert(item) }
         dismiss()
+    }
+}
+
+/// A new calendar event for going to a restaurant: "Dinner at Little Olive",
+/// the next evening at 7, with the place as the location. Change anything before adding.
+struct PlanVisitSheet: View {
+    let restaurant: LibraryItem
+
+    var body: some View {
+        EventEditSheet(prefill: Self.draft(for: restaurant))
+    }
+
+    static func draft(for place: LibraryItem) -> CalendarStore.EventDraft {
+        let cal = Calendar.current
+        // Tonight at 7 if it's still the afternoon, otherwise tomorrow at 7.
+        let tonight = cal.date(bySettingHour: 19, minute: 0, second: 0, of: .now) ?? .now
+        let start = Date.now < tonight.addingTimeInterval(-2 * 3600)
+            ? tonight
+            : cal.date(byAdding: .day, value: 1, to: tonight) ?? tonight
+
+        var draft = CalendarStore.EventDraft()
+        draft.title = "Dinner at \(place.title)"
+        draft.start = start
+        draft.end = start.addingTimeInterval(90 * 60)
+        draft.location = [place.title, place.creator].filter { !$0.isEmpty }.joined(separator: ", ")
+        draft.notes = place.notes
+        return draft
     }
 }
