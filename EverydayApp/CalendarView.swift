@@ -75,6 +75,7 @@ struct CalendarView: View {
                             .tracking(-0.5)
                             .foregroundStyle(Theme.ink)
                         Spacer()
+                        SearchButton()
                         AddMenu(
                             onTask: { newKind = .task },
                             onReminder: { newKind = .reminder },

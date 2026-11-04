@@ -51,7 +51,7 @@ final class CalendarStore {
 
     private(set) var access: Access = .notDetermined
     private(set) var calendars: [EKCalendar] = []
-    private var changeToken = 0
+    private(set) var changeToken = 0   // goes up every time calendars are reloaded
     private var categoryOverrides: [String: String]   // calendar id → "work" / "personal"
     private var hiddenCalendars: Set<String>
 

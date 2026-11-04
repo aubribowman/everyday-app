@@ -43,13 +43,24 @@ struct ContentView: View {
         }
         .tint(Theme.forest)
         // Schedule task notifications at launch and after every task change (see Reminders.swift).
-        .task(id: reminderKey) { await Reminders.shared.update(for: allTasks) }
+        .task(id: reminderKey) {
+            await Reminders.shared.update(for: allTasks)
+            WidgetSync.update(tasks: allTasks, calendarStore: calendarStore)
+        }
+        // Keep the home screen widget current when calendars change (see WidgetSync.swift).
+        .onChange(of: calendarStore.changeToken) {
+            WidgetSync.update(tasks: allTasks, calendarStore: calendarStore)
+        }
         .onChange(of: scenePhase) { _, phase in
             // Each time you open the app: pick up changes made in iPhone Settings,
             // and ask iOS to fetch the latest events from your calendar accounts.
             if phase == .active {
                 calendarStore.refreshAccess()
                 calendarStore.refresh()
+            }
+            // Leaving the app: save a fresh summary for the widget (times may have passed).
+            if phase == .background {
+                WidgetSync.update(tasks: allTasks, calendarStore: calendarStore)
             }
         }
     }

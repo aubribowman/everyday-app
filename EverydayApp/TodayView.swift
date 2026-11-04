@@ -85,12 +85,15 @@ struct TodayView: View {
                     .foregroundStyle(Theme.ink)
             }
             Spacer()
-            // Tap your picture (or initials) to open Settings.
-            Button { showingSettings = true } label: {
-                ProfileAvatar(size: 44)   // your photo, or your initials (see Profile.swift)
+            HStack(spacing: 10) {
+                SearchButton(size: 44)
+                // Tap your picture (or initials) to open Settings.
+                Button { showingSettings = true } label: {
+                    ProfileAvatar(size: 44)   // your photo, or your initials (see Profile.swift)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Settings")
             .padding(.top, 18)
         }
     }

@@ -82,7 +82,10 @@ struct LibraryView: View {
                     .foregroundStyle(Theme.muted)
             }
             Spacer()
-            AddButton { adding = true }
+            HStack(spacing: 10) {
+                SearchButton()
+                AddButton { adding = true }
+            }
         }
     }
 

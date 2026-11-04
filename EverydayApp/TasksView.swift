@@ -37,6 +37,7 @@ struct TasksView: View {
                             .tracking(-0.5)
                             .foregroundStyle(Theme.ink)
                         Spacer()
+                        SearchButton()
                         AddButton { showingNewTask = true }
                     }
 

@@ -27,7 +27,10 @@ struct ListsView: View {
                                 .foregroundStyle(Theme.muted)
                         }
                         Spacer()
-                        AddButton { showingNewList = true }
+                        HStack(spacing: 10) {
+                            SearchButton()
+                            AddButton { showingNewList = true }
+                        }
                     }
 
                     if lists.isEmpty {
