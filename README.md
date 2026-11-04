@@ -1,6 +1,7 @@
 # Everyday
 
-A calm iPhone app for your day: tasks, reminders, lists and your calendar in one place.
+A calm iPhone app for your day: tasks, reminders, lists, your calendar and the books and shows
+you want to get to, all in one place.
 Built with SwiftUI and SwiftData.
 
 <p align="center">
@@ -51,6 +52,11 @@ be renamed and given their own icon and color.
   <img src="docs/screenshots/lists.png" width="250" alt="Lists screen">
 </p>
 
+### Library
+Save books you want to read and TV shows you want to watch. Each one moves from
+**Want to read** to **Reading** to **Finished** (or the watching versions for shows) with a
+single tap, and can hold the author or streaming service plus a note.
+
 ### Light and dark mode
 Follows your iPhone's setting, or pick Light or Dark yourself by tapping your initials on the
 Today screen. The app icon has light, dark and tinted versions.
@@ -72,11 +78,11 @@ The app asks for two permissions:
 | File | What it does |
 | --- | --- |
 | `EverydayApp.swift` | App entry point; sets up storage, the calendar connection and Light/Dark mode |
-| `ContentView.swift` | The four tabs, plus keeping reminders and calendars up to date |
-| `TodayView.swift`, `CalendarView.swift`, `TasksView.swift`, `ListsView.swift` | The four main screens |
+| `ContentView.swift` | The five tabs, plus keeping reminders and calendars up to date |
+| `TodayView.swift`, `CalendarView.swift`, `ListsView.swift`, `LibraryView.swift`, `TasksView.swift` | The five main screens |
 | `TaskDetailView.swift`, `ListDetailView.swift` | Screens for a single task or list |
 | `Sheets.swift`, `EventEditSheet.swift`, `CalendarSettingsSheet.swift` | Pop-up screens for adding and editing |
-| `Models.swift` | Tasks and lists, including the repeat logic |
+| `Models.swift` | Tasks, lists, and Library books and shows, including the repeat logic |
 | `CalendarStore.swift` | Reads and writes calendar events through Apple's EventKit |
 | `Reminders.swift` | Schedules task notifications |
 | `Components.swift`, `EventCard.swift` | Reusable pieces like checkboxes, rows and cards |

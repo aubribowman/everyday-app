@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 enum AppTab: Hashable {
-    case today, calendar, lists, tasks
+    case today, calendar, lists, library, tasks
 }
 
 struct ContentView: View {
@@ -33,6 +33,10 @@ struct ContentView: View {
                 .tabItem { Label("Lists", systemImage: "checklist") }
                 .tag(AppTab.lists)
 
+            LibraryView()
+                .tabItem { Label("Library", systemImage: "books.vertical") }
+                .tag(AppTab.library)
+
             TasksView()
                 .tabItem { Label("Tasks", systemImage: "checkmark.circle") }
                 .tag(AppTab.tasks)
@@ -62,7 +66,7 @@ struct ContentView: View {
 /// The app filled with sample data, for Xcode previews.
 private func previewContent() -> some View {
     let container = try! ModelContainer(
-        for: TaskList.self, TaskItem.self,
+        for: TaskList.self, TaskItem.self, LibraryItem.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     SampleData.load(into: container.mainContext)

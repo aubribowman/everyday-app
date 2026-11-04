@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
 
 /// What the + menu is making. A reminder is a task with a time and a notification;
 /// a plain task starts without a date (you can still add one).
@@ -202,10 +203,47 @@ struct ItemEditSheet: View {
 struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("appearance") private var appearance = AppearanceSetting.system
+    @AppStorage("userName") private var userName = "Aubri Bowman"
+    @AppStorage(ProfilePhoto.versionKey) private var photoVersion = 0
+
+    // The photo picked from your library, before it's processed and saved.
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var hasPhoto = ProfilePhoto.load() != nil
+    @State private var photoError = false
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    VStack(spacing: 12) {
+                        ProfileAvatar(size: 96)
+                        // Apple's photo picker: no permission prompt needed, you only share the one photo.
+                        PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                            Text(hasPhoto ? "Change photo" : "Choose photo")
+                                .font(.subheadline.weight(.medium))
+                        }
+                        if hasPhoto {
+                            Button("Remove photo", role: .destructive) {
+                                ProfilePhoto.remove()
+                                hasPhoto = false
+                                photoVersion += 1
+                            }
+                            .font(.subheadline)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.borderless)   // keeps the two buttons separate inside one row
+                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }   // full-width divider below
+                    .padding(.vertical, 6)
+
+                    TextField("Your name", text: $userName)
+                        .textContentType(.name)
+                } header: {
+                    Text("Profile")
+                } footer: {
+                    Text("Your first name is used in the greeting on the Today tab.")
+                }
+
                 Section {
                     Picker("Appearance", selection: $appearance) {
                         ForEach(AppearanceSetting.allCases) { Text($0.label).tag($0) }
@@ -225,8 +263,28 @@ struct SettingsSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+            // When a photo is picked: load it, crop and shrink it, then save it.
+            .onChange(of: pickedPhoto) { _, item in
+                guard let item else { return }
+                Task {
+                    if let data = try? await item.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data),
+                       (try? ProfilePhoto.save(image)) != nil {
+                        hasPhoto = true
+                        photoVersion += 1
+                    } else {
+                        photoError = true
+                    }
+                    pickedPhoto = nil
+                }
+            }
+            .alert("Couldn't use that photo", isPresented: $photoError) {
+                Button("OK") {}
+            } message: {
+                Text("Try picking a different photo.")
+            }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.large])
     }
 }
 

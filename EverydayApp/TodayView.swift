@@ -31,9 +31,6 @@ struct TodayView: View {
     private var firstName: String {
         userName.split(separator: " ").first.map(String.init) ?? userName
     }
-    private var initials: String {
-        userName.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
-    }
     private var greeting: String {
         switch Calendar.current.component(.hour, from: .now) {
         case 5..<12: "Good morning"
@@ -88,13 +85,9 @@ struct TodayView: View {
                     .foregroundStyle(Theme.ink)
             }
             Spacer()
-            // Tap your initials to open Settings.
+            // Tap your picture (or initials) to open Settings.
             Button { showingSettings = true } label: {
-                Text(initials)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.peachInk)
-                    .frame(width: 44, height: 44)
-                    .background(Theme.peach, in: Circle())
+                ProfileAvatar(size: 44)   // your photo, or your initials (see Profile.swift)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Settings")

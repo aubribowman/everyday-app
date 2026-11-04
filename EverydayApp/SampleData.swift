@@ -75,5 +75,18 @@ enum SampleData {
         task("Water the plants", at: at(18), icon: "leaf", location: "Home")
         task("Plan the weekend", at: at(10, daysFromNow: 2), icon: "sun.max")
         task("Book a dentist appointment", at: nil, icon: "phone")
+
+        // Library: books and shows
+        func save(_ title: String, _ creator: String, _ kind: LibraryKind, _ status: LibraryStatus) {
+            context.insert(LibraryItem(title: title, creator: creator, kind: kind, status: status))
+        }
+        save("Project Hail Mary", "Andy Weir", .book, .want)
+        save("The Thursday Murder Club", "Richard Osman", .book, .want)
+        save("Tomorrow, and Tomorrow, and Tomorrow", "Gabrielle Zevin", .book, .active)
+        save("Tom Lake", "Ann Patchett", .book, .done)
+        save("Severance", "Apple TV", .show, .want)
+        save("The Bear", "Hulu", .show, .want)
+        save("Slow Horses", "Apple TV", .show, .active)
+        save("Abbott Elementary", "Hulu", .show, .done)
     }
 }

@@ -15,6 +15,6 @@ struct EverydayApp: App {
                 .environment(calendarStore)
                 .onChange(of: appearance, initial: true) { _, setting in setting.apply() }
         }
-        .modelContainer(for: [TaskList.self, TaskItem.self])
+        .modelContainer(for: [TaskList.self, TaskItem.self, LibraryItem.self])
     }
 }

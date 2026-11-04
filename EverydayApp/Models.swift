@@ -178,3 +178,61 @@ extension Array where Element == TaskItem {
         sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
     }
 }
+
+// MARK: Library (books and TV shows)
+
+/// Books or TV shows: the two halves of the Library tab.
+enum LibraryKind: String, CaseIterable, Identifiable {
+    case book, show
+    var id: String { rawValue }
+    var label: String { self == .book ? "Books" : "TV shows" }
+    var icon: String { self == .book ? "book.closed" : "tv" }
+    var creatorPrompt: String { self == .book ? "Author (optional)" : "Where to watch, e.g. Netflix (optional)" }
+}
+
+/// Where you are with a book or show.
+enum LibraryStatus: String, CaseIterable, Identifiable {
+    case want, active, done
+    var id: String { rawValue }
+
+    /// "Want to read" / "Reading" / "Finished" (or the watching versions for shows).
+    func label(for kind: LibraryKind) -> String {
+        switch (self, kind) {
+        case (.want, .book):   "Want to read"
+        case (.want, .show):   "Want to watch"
+        case (.active, .book): "Reading"
+        case (.active, .show): "Watching"
+        case (.done, _):       "Finished"
+        }
+    }
+}
+
+/// One book or TV show on the Library tab.
+@Model
+final class LibraryItem {
+    var title: String = ""
+    var creator: String = ""       // author for books, streaming service for shows
+    var kind: String = "book"      // LibraryKind raw value
+    var status: String = "want"    // LibraryStatus raw value
+    var notes: String = ""         // who recommended it, which season you're on...
+    var createdAt: Date = Date.now
+    var statusChangedAt: Date = Date.now   // newest-first ordering within each section
+
+    init(title: String, creator: String = "", kind: LibraryKind, status: LibraryStatus = .want) {
+        self.title = title
+        self.creator = creator
+        self.kind = kind.rawValue
+        self.status = status.rawValue
+        self.createdAt = .now
+        self.statusChangedAt = .now
+    }
+
+    var kindValue: LibraryKind { LibraryKind(rawValue: kind) ?? .book }
+    var statusValue: LibraryStatus {
+        get { LibraryStatus(rawValue: status) ?? .want }
+        set {
+            status = newValue.rawValue
+            statusChangedAt = .now
+        }
+    }
+}
