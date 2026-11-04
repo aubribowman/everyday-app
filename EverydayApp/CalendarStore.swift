@@ -66,7 +66,8 @@ final class CalendarStore {
         observer = NotificationCenter.default.addObserver(
             forName: .EKEventStoreChanged, object: store, queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in self?.reload() }
+            // `queue: .main` already runs this on the main thread, so reload right here.
+            MainActor.assumeIsolated { self?.reload() }
         }
         refreshAccess()
     }
