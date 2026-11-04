@@ -286,6 +286,7 @@ final class LibraryItem {
     var notes: String = ""
     var createdAt: Date = Date.now
     var statusChangedAt: Date = Date.now   // newest-first ordering within each section
+    var coverURL: String = ""      // book cover or show poster from the lookup ("" = none)
 
     init(title: String, creator: String = "", kind: LibraryKind, status: LibraryStatus = .want,
          genre: String = "", rating: Int = 0) {
@@ -300,6 +301,7 @@ final class LibraryItem {
     }
 
     var kindValue: LibraryKind { LibraryKind(rawValue: kind) ?? .book }
+    var cover: URL? { coverURL.isEmpty ? nil : URL(string: coverURL) }
     var statusValue: LibraryStatus {
         get { LibraryStatus(rawValue: status) ?? .want }
         set {

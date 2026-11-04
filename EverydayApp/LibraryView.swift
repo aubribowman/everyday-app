@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import MapKit
 
 /// The Library tab: books, TV shows and restaurants you want to get to,
 /// are in the middle of, or have finished (with a star rating).
@@ -13,7 +14,9 @@ struct LibraryView: View {
     @State private var genreFilter: String?        // nil = all genres
     @State private var adding = false
     @State private var editing: LibraryItem?
-    @State private var showingFinished = false
+    /// Folded-away sections, remembered between launches, e.g. "book.want,show.done".
+    /// Finished starts folded so the list stays focused on what's next.
+    @AppStorage("libraryCollapsed") private var collapsedRaw = "book.done,show.done,restaurant.done"
 
     private var ofKind: [LibraryItem] { items.filter { $0.kindValue == kind } }
     private var shown: [LibraryItem] {
@@ -30,6 +33,16 @@ struct LibraryView: View {
             seen.append(item.genre)
         }
         return seen.sorted()
+    }
+
+    private func key(_ status: LibraryStatus) -> String { "\(kind.rawValue).\(status.rawValue)" }
+    private func isCollapsed(_ status: LibraryStatus) -> Bool {
+        collapsedRaw.split(separator: ",").contains { $0 == key(status) }
+    }
+    private func toggle(_ status: LibraryStatus) {
+        var keys = Set(collapsedRaw.split(separator: ",").map(String.init))
+        if !keys.insert(key(status)).inserted { keys.remove(key(status)) }
+        withAnimation(.snappy) { collapsedRaw = keys.sorted().joined(separator: ",") }
     }
 
     var body: some View {
@@ -54,8 +67,7 @@ struct LibraryView: View {
                         .padding(.top, 30)
                     }
 
-                    ForEach(kind.statuses.filter { $0 != .done }) { section($0) }
-                    finishedSection
+                    ForEach(kind.statuses) { section($0) }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -116,42 +128,29 @@ struct LibraryView: View {
         .buttonStyle(.plain)
     }
 
-    /// "WANT TO READ" or "READING" with its items in a card. Hidden when empty.
+    /// "WANT TO READ · 3" with its items in a card. Tap the heading to fold it away. Hidden when empty.
     @ViewBuilder
     private func section(_ status: LibraryStatus) -> some View {
         let list = items(status)
         if !list.isEmpty {
+            let collapsed = isCollapsed(status)
             VStack(alignment: .leading, spacing: 8) {
-                Text(status.label(for: kind).uppercased())
-                    .font(.caption.weight(.semibold))
-                    .tracking(0.4)
-                    .foregroundStyle(Theme.muted)
-                card(list)
-            }
-        }
-    }
-
-    /// Finished / Been there starts folded away so the list stays focused on what's next.
-    @ViewBuilder
-    private var finishedSection: some View {
-        let list = items(.done)
-        if !list.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Button {
-                    withAnimation(.snappy) { showingFinished.toggle() }
-                } label: {
+                Button { toggle(status) } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: showingFinished ? "chevron.down" : "chevron.right")
+                        Image(systemName: "chevron.right")
                             .font(.caption2.weight(.bold))
-                        Text("\(LibraryStatus.done.label(for: kind).uppercased()) · \(list.count)")
+                            .rotationEffect(.degrees(collapsed ? 0 : 90))
+                        Text("\(status.label(for: kind).uppercased()) · \(list.count)")
                     }
                     .font(.caption.weight(.semibold))
                     .tracking(0.4)
                     .foregroundStyle(Theme.muted)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityHint(collapsed ? "Shows this section" : "Hides this section")
 
-                if showingFinished { card(list) }
+                if !collapsed { card(list) }
             }
         }
     }
@@ -175,6 +174,7 @@ struct LibraryRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            CoverImage(url: item.cover, kind: item.kindValue)
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.title)
                     .foregroundStyle(Theme.ink)
@@ -268,8 +268,17 @@ struct LibraryItemSheet: View {
     @State private var genre: String
     @State private var rating: Int
     @State private var notes: String
+    @State private var coverURL: String
     @State private var typingGenre = false
     @State private var customGenre = ""
+
+    // Matches found while you type the title.
+    @State private var suggestions: [LookupResult] = []
+    @State private var searching = false
+    @State private var lookupFailed = false
+    /// The title we last looked up or picked, so picking a match (or opening an
+    /// existing item) doesn't start a new search.
+    @State private var settledTitle: String
 
     init(kind: LibraryKind = .book, editing item: LibraryItem? = nil) {
         editing = item
@@ -280,7 +289,14 @@ struct LibraryItemSheet: View {
         _genre = State(initialValue: item?.genre ?? "")
         _rating = State(initialValue: item?.rating ?? 0)
         _notes = State(initialValue: item?.notes ?? "")
+        _coverURL = State(initialValue: item?.coverURL ?? "")
+        // Saved items without a cover get matches right away, so you can add one.
+        // Restaurants never have covers, so they only search when you change the name.
+        let needsCover = item.map { $0.coverURL.isEmpty && $0.kindValue != .restaurant } ?? false
+        _settledTitle = State(initialValue: needsCover ? "" : item?.title ?? "")
     }
+
+    private var trimmedTitle: String { title.trimmingCharacters(in: .whitespaces) }
 
     // Include a genre you typed yourself so it shows as chosen.
     private var genreChoices: [String] {
@@ -301,7 +317,13 @@ struct LibraryItemSheet: View {
                 }
 
                 Section {
-                    TextField(kind == .restaurant ? "Name" : "Title", text: $title)
+                    HStack(spacing: 12) {
+                        if !coverURL.isEmpty {
+                            CoverImage(url: URL(string: coverURL), kind: kind, width: 34)
+                        }
+                        TextField(kind == .restaurant ? "Name" : "Title", text: $title)
+                        if searching { ProgressView() }
+                    }
                     TextField(kind.creatorPrompt, text: $creator)
                     Picker(kind.genreLabel, selection: $genre) {
                         Text("None").tag("")
@@ -313,6 +335,8 @@ struct LibraryItemSheet: View {
                     }
                     .font(.subheadline)
                 }
+
+                suggestionSection
 
                 Section("Status") {
                     Picker("Status", selection: $status) {
@@ -356,10 +380,14 @@ struct LibraryItemSheet: View {
                         .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
+            // Look things up shortly after you stop typing.
+            .task(id: "\(kind.rawValue)|\(trimmedTitle)") { await lookUp() }
             // Switching type: drop a genre that doesn't belong, and a status restaurants don't have.
             .onChange(of: kind) { _, newKind in
                 if !newKind.genres.contains(genre) { genre = "" }
                 if !newKind.statuses.contains(status) { status = .want }
+                coverURL = ""
+                settledTitle = ""   // look the title up again as the new type
             }
             .alert(kind.genreLabel, isPresented: $typingGenre) {
                 TextField(kind == .restaurant ? "e.g. Ethiopian" : "e.g. Cozy mystery", text: $customGenre)
@@ -373,6 +401,81 @@ struct LibraryItemSheet: View {
         .presentationDetents([.large])
     }
 
+    /// Matches for the title as you type. Tap one to fill in the details.
+    @ViewBuilder
+    private var suggestionSection: some View {
+        if !suggestions.isEmpty {
+            Section {
+                ForEach(suggestions) { result in
+                    Button { pick(result) } label: {
+                        HStack(spacing: 12) {
+                            CoverImage(url: result.coverURL, kind: kind, width: 34)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(result.title)
+                                    .foregroundStyle(Theme.ink)
+                                    .lineLimit(2)
+                                Text([result.creator, result.year, result.genre]
+                                        .filter { !$0.isEmpty }.joined(separator: " · "))
+                                    .font(.footnote)
+                                    .foregroundStyle(Theme.muted)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } header: {
+                Text("Tap a match to fill in the details")
+            }
+        } else if lookupFailed {
+            Section {
+                Text("Couldn't look that up. Check your connection, or fill it in yourself.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.muted)
+            }
+        }
+    }
+
+    private func lookUp() async {
+        let query = trimmedTitle
+        guard query.count >= 2, query != settledTitle else {
+            suggestions = []
+            lookupFailed = false
+            return
+        }
+        // Wait until typing pauses; a new keystroke cancels this and starts over.
+        try? await Task.sleep(for: .milliseconds(450))
+        guard !Task.isCancelled else { return }
+
+        searching = true
+        defer { searching = false }
+        do {
+            let results = try await LibraryLookup.search(query, kind: kind)
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { suggestions = results }
+            lookupFailed = false
+        } catch {
+            guard !Task.isCancelled else { return }
+            suggestions = []
+            // Apple Maps reports "nothing found" as an error; that isn't worth a message.
+            lookupFailed = !(error is MKError)
+        }
+    }
+
+    /// Fills in the details. For something already saved, only blanks are filled,
+    /// so an author or genre you chose yourself stays.
+    private func pick(_ result: LookupResult) {
+        title = result.title
+        settledTitle = result.title
+        let isNew = editing == nil
+        if !result.creator.isEmpty && (isNew || creator.isEmpty) { creator = result.creator }
+        if !result.genre.isEmpty && (isNew || genre.isEmpty) { genre = result.genre }
+        coverURL = result.coverURL?.absoluteString ?? ""
+        withAnimation(.snappy) { suggestions = [] }
+    }
+
     private func save() {
         let trimmed = title.trimmingCharacters(in: .whitespaces)
         let item = editing ?? LibraryItem(title: trimmed, kind: kind)
@@ -381,6 +484,7 @@ struct LibraryItemSheet: View {
         item.genre = genre
         item.rating = status == .done ? rating : 0
         item.notes = notes
+        item.coverURL = coverURL
         if item.statusValue != status { item.statusValue = status }
         if editing == nil { context.insert(item) }
         dismiss()
