@@ -160,6 +160,8 @@ struct CalendarView: View {
                 .padding(20)
             }
             .background(Theme.background)
+            // Pull down to fetch the latest events from Google, Outlook and iCloud.
+            .refreshable { await calendarStore.refreshAndWait() }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: TaskItem.self) { TaskDetailView(task: $0) }
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }

@@ -30,8 +30,12 @@ struct ContentView: View {
         }
         .tint(Theme.forest)
         .onChange(of: scenePhase) { _, phase in
-            // Picks up changes made in iPhone Settings while the app was in the background
-            if phase == .active { calendarStore.refreshAccess() }
+            // Each time you open the app: pick up changes made in iPhone Settings,
+            // and ask iOS to fetch the latest events from your calendar accounts.
+            if phase == .active {
+                calendarStore.refreshAccess()
+                calendarStore.refresh()
+            }
         }
     }
 }

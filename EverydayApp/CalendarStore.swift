@@ -95,6 +95,23 @@ final class CalendarStore {
         refreshAccess()
     }
 
+    /// Asks iOS to check Google, Outlook and iCloud for new changes right now.
+    /// iOS normally only checks every so often (iPhone Settings → Calendar → Accounts → Fetch),
+    /// so edits made on another device can take a while to show up. Whatever it finds
+    /// arrives a moment later through the "calendar changed" notice set up in `init`.
+    func refresh() {
+        guard access == .granted else { return }
+        store.refreshSourcesIfNecessary()
+        reload()
+    }
+
+    /// For pull-to-refresh: fetch, then keep the spinner up briefly while iOS downloads.
+    func refreshAndWait() async {
+        refresh()
+        try? await Task.sleep(for: .seconds(1.5))
+        reload()
+    }
+
     func reload() {
         calendars = store.calendars(for: .event)
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
