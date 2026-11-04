@@ -127,6 +127,47 @@ extension TaskItem {
         return line
     }
 
+    /// True for a task with a date and a Repeat setting other than "Does not repeat".
+    var repeats: Bool { repeatRule != "never" && dueDate != nil }
+
+    /// The next time this task comes around after now, keeping the same time of day.
+    /// e.g. "Every week" on Tuesday 5 PM → next Tuesday 5 PM.
+    func nextDueDate(after now: Date = .now) -> Date? {
+        guard var date = dueDate else { return nil }
+        let cal = Calendar.current
+        func step(_ d: Date) -> Date? {
+            switch repeatRule {
+            case "daily":    return cal.date(byAdding: .day, value: 1, to: d)
+            case "weekly":   return cal.date(byAdding: .weekOfYear, value: 1, to: d)
+            case "monthly":  return cal.date(byAdding: .month, value: 1, to: d)
+            case "weekdays":
+                // Next day that's Monday–Friday (weekday 2–6; Sunday is 1).
+                var next = cal.date(byAdding: .day, value: 1, to: d)
+                while let n = next, !(2...6).contains(cal.component(.weekday, from: n)) {
+                    next = cal.date(byAdding: .day, value: 1, to: n)
+                }
+                return next
+            default:         return nil
+            }
+        }
+        // Always move at least once; keep going if the task was overdue for a while.
+        repeat {
+            guard let next = step(date) else { return nil }
+            date = next
+        } while date <= now
+        return date
+    }
+
+    /// Checking off a task. A repeating task moves to its next date and stays open;
+    /// anything else is simply marked done (or undone).
+    func toggleDone() {
+        if !isDone, repeats, let next = nextDueDate() {
+            dueDate = next
+        } else {
+            isDone.toggle()
+        }
+    }
+
     var nudgeDate: Date? {
         dueDate?.addingTimeInterval(TimeInterval(-remindMinutesBefore * 60))
     }

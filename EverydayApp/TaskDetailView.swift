@@ -104,8 +104,10 @@ struct TaskDetailView: View {
                 }
 
                 Button {
-                    withAnimation { task.isDone.toggle() }
-                    if task.isDone { dismiss() }
+                    // A repeating task moves to its next date instead of staying done.
+                    let rollsForward = task.repeats && !task.isDone
+                    withAnimation { task.toggleDone() }
+                    if task.isDone || rollsForward { dismiss() }
                 } label: {
                     Label(task.isDone ? "Mark as not done" : "Mark as complete",
                           systemImage: task.isDone ? "arrow.uturn.backward" : "checkmark")

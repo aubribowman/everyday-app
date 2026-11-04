@@ -148,13 +148,12 @@ struct DividedStack<Item: Identifiable, Row: View>: View {
 
 /// A standalone task: checkbox, title, time · place, icon. Tap the text to open it.
 struct TaskRow: View {
+    @Environment(CalendarStore.self) private var calendarStore
     @Bindable var task: TaskItem
 
     var body: some View {
         HStack(spacing: 14) {
-            Button {
-                withAnimation(.snappy) { task.isDone.toggle() }
-            } label: {
+            Button(action: complete) {
                 CheckBox(isOn: task.isDone)
             }
             .buttonStyle(.plain)
@@ -166,9 +165,15 @@ struct TaskRow: View {
                             .foregroundStyle(task.isDone ? Theme.muted : Theme.ink)
                             .strikethrough(task.isDone)
                         if !task.detailLine.isEmpty {
-                            Text(task.detailLine)
-                                .font(.footnote)
-                                .foregroundStyle(Theme.muted)
+                            HStack(spacing: 4) {
+                                Text(task.detailLine)
+                                // A small ↻ marks tasks that repeat.
+                                if task.repeats {
+                                    Image(systemName: "repeat").font(.caption2)
+                                }
+                            }
+                            .font(.footnote)
+                            .foregroundStyle(Theme.muted)
                         }
                     }
                     Spacer()
@@ -181,6 +186,23 @@ struct TaskRow: View {
             .buttonStyle(.plain)
         }
         .padding(.vertical, 12)
+    }
+
+    private func complete() {
+        guard task.repeats, !task.isDone else {
+            withAnimation(.snappy) { task.toggleDone() }
+            return
+        }
+        // Repeating task: show the tick for a moment, then move it to its next date.
+        withAnimation(.snappy) { task.isDone = true }
+        Task {
+            try? await Task.sleep(for: .seconds(0.7))
+            withAnimation(.snappy) {
+                task.isDone = false
+                task.toggleDone()
+            }
+            calendarStore.sync(task)   // moves its calendar event too, if it has one
+        }
     }
 }
 
