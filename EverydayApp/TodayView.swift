@@ -72,6 +72,7 @@ struct TodayView: View {
                     hero
                     comingUp
                     onYourList
+                    HabitsCard { path.append(HabitRoute.all) }
                     if let workoutToShow { workoutCard(workoutToShow) }
                     if !upNext.isEmpty { upNextCard }
                     footer
@@ -87,6 +88,7 @@ struct TodayView: View {
             .navigationDestination(for: TaskItem.self) { TaskDetailView(task: $0) }
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
             .gymDestinations()
+            .habitDestinations()
             .sheet(item: $newKind) { NewTaskSheet(kind: $0) }
             .sheet(isPresented: $showingNewEvent) { EventEditSheet().environment(calendarStore) }
             .sheet(isPresented: $showingSettings) { SettingsSheet() }

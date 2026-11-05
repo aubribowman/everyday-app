@@ -7,6 +7,21 @@ struct EverydayApp: App {
     // The Light / Dark / System choice from the Settings sheet (see Sheets.swift).
     @AppStorage("appearance") private var appearance = AppearanceSetting.system
 
+    // Made here (rather than with `.modelContainer(for:)`) so reminders can use it too:
+    // tapping "Done" on a habit notification checks it in without opening the app.
+    private let container: ModelContainer
+
+    init() {
+        do {
+            container = try ModelContainer(for: TaskList.self, TaskItem.self, LibraryItem.self,
+                                           WorkoutDay.self, Exercise.self, ExerciseLog.self,
+                                           Habit.self, HabitCheckIn.self)
+        } catch {
+            fatalError("Couldn't open the app's data: \(error)")
+        }
+        Reminders.shared.container = container
+    }
+
     var body: some Scene {
         WindowGroup {
             // Colors adapt via Theme.swift. Re-apply the Light/Dark choice at launch
@@ -15,7 +30,6 @@ struct EverydayApp: App {
                 .environment(calendarStore)
                 .onChange(of: appearance, initial: true) { _, setting in setting.apply() }
         }
-        .modelContainer(for: [TaskList.self, TaskItem.self, LibraryItem.self,
-                         WorkoutDay.self, Exercise.self, ExerciseLog.self])
+        .modelContainer(container)
     }
 }
