@@ -4,6 +4,7 @@ import SwiftData
 struct ListsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \TaskList.createdAt) private var lists: [TaskList]
+    @Query(sort: \WorkoutDay.order) private var workoutDays: [WorkoutDay]
     @State private var showingNewList = false
     // The list being edited from a tile's long-press menu (nil = none).
     @State private var editingList: TaskList?
@@ -32,6 +33,9 @@ struct ListsView: View {
                             AddButton { showingNewList = true }
                         }
                     }
+
+                    NavigationLink(value: GymRoute.gym) { gymCard }
+                        .buttonStyle(.plain)
 
                     if lists.isEmpty {
                         VStack(spacing: 14) {
@@ -71,9 +75,42 @@ struct ListsView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
             .navigationDestination(for: TaskItem.self) { TaskDetailView(task: $0) }
+            .gymDestinations()
             .sheet(isPresented: $showingNewList) { NewListSheet() }
             .sheet(item: $editingList) { NewListSheet(editing: $0) }
         }
+    }
+}
+
+extension ListsView {
+    /// "Gym routine · Next: Arm x Shoulder Day" — opens the Gym screen.
+    var gymCard: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "dumbbell.fill")
+                .font(.title3)
+                .foregroundStyle(Theme.lavenderInk)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Gym routine")
+                    .font(.headline)
+                    .foregroundStyle(Theme.ink)
+                Text(gymSubtitle)
+                    .font(.caption)
+                    .foregroundStyle(Theme.lavenderInk)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.lavenderInk)
+        }
+        .padding(16)
+        .background(Theme.lavender, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var gymSubtitle: String {
+        guard let next = Gym.nextDay(in: workoutDays) else { return "Add your workouts" }
+        if workoutDays.contains(where: \.isFinishedToday) { return "Done today · next: \(next.name)" }
+        return "Next: \(next.name)"
     }
 }
 

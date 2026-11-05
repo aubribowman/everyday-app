@@ -77,7 +77,7 @@ struct ContentView: View {
 /// The app filled with sample data, for Xcode previews.
 private func previewContent() -> some View {
     let container = try! ModelContainer(
-        for: TaskList.self, TaskItem.self, LibraryItem.self,
+        for: TaskList.self, TaskItem.self, LibraryItem.self, WorkoutDay.self, Exercise.self, ExerciseLog.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     SampleData.load(into: container.mainContext)

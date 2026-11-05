@@ -13,6 +13,13 @@ struct TodayView: View {
     @State private var showingSettings = false
     @State private var editingEvent: CalendarEvent?
     @State private var openLibraryItem: LibraryItem?
+    @Query(sort: \WorkoutDay.order) private var workoutDays: [WorkoutDay]
+    @State private var showingGym = false
+
+    /// Today's finished workout if there is one, otherwise the next one in the rotation.
+    private var workoutToShow: WorkoutDay? {
+        workoutDays.first(where: \.isFinishedToday) ?? Gym.nextDay(in: workoutDays)
+    }
 
     /// The book you're reading and the show you're watching (the latest of each).
     private var upNext: [LibraryItem] {
@@ -64,6 +71,7 @@ struct TodayView: View {
                     hero
                     comingUp
                     onYourList
+                    if let workoutToShow { workoutCard(workoutToShow) }
                     if !upNext.isEmpty { upNextCard }
                     footer
                 }
@@ -77,6 +85,8 @@ struct TodayView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: TaskItem.self) { TaskDetailView(task: $0) }
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
+            .gymDestinations()
+            .navigationDestination(isPresented: $showingGym) { GymView() }
             .sheet(item: $newKind) { NewTaskSheet(kind: $0) }
             .sheet(isPresented: $showingNewEvent) { EventEditSheet().environment(calendarStore) }
             .sheet(isPresented: $showingSettings) { SettingsSheet() }
@@ -181,6 +191,17 @@ struct TodayView: View {
             } else {
                 DividedStack(items: todayTasks) { TaskRow(task: $0) }
             }
+        }
+    }
+
+    /// Your next workout (or today's, once finished). Tap it to start ticking off exercises.
+    private func workoutCard(_ day: WorkoutDay) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "Workout", action: "All workouts") { showingGym = true }
+            NavigationLink(value: day) {
+                WorkoutDayCard(day: day, isNext: !day.isFinishedToday)
+            }
+            .buttonStyle(.plain)
         }
     }
 
