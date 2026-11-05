@@ -22,6 +22,10 @@ struct GymView: View {
     @State private var importing = false
     @State private var addingDay = false
     @State private var editingDay: WorkoutDay?
+    @State private var editingSchedule = false
+    @AppStorage(Gym.Schedule.daysKey) private var gymDays = ""
+    @AppStorage(Gym.Schedule.remindKey) private var remind = false
+    @AppStorage(Gym.Schedule.minutesKey) private var remindMinutes = 7 * 60
 
     private var next: WorkoutDay? { Gym.nextDay(in: days) }
 
@@ -51,6 +55,10 @@ struct GymView: View {
                 if days.isEmpty {
                     emptyState
                 } else {
+                    weekCard
+                    let highlights = Gym.highlights(in: days)
+                    if !highlights.isEmpty { progressCard(highlights) }
+
                     VStack(spacing: 12) {
                         ForEach(days) { day in
                             NavigationLink(value: day) {
@@ -77,6 +85,93 @@ struct GymView: View {
         .sheet(isPresented: $importing) { ImportRoutineSheet(existingCount: days.count) }
         .sheet(isPresented: $addingDay) { WorkoutDaySheet(order: days.count) }
         .sheet(item: $editingDay) { WorkoutDaySheet(editing: $0) }
+        .sheet(isPresented: $editingSchedule) { GymScheduleSheet() }
+    }
+
+    /// Your gym days and what's coming up: "Mon, Wed, Fri · Next: Wed, Arm x Shoulder Day".
+    private var weekCard: some View {
+        let weekdays = Gym.Schedule.parse(gymDays)
+        let upcoming = Gym.plan(days, weekdays: weekdays, count: 1).first
+        return Button { editingSchedule = true } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "calendar")
+                    .font(.title3)
+                    .foregroundStyle(Theme.forest)
+                    .frame(width: 44, height: 44)
+                    .background(Theme.sage, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                VStack(alignment: .leading, spacing: 3) {
+                    if weekdays.isEmpty {
+                        Text("Pick your gym days")
+                            .font(.headline)
+                            .foregroundStyle(Theme.ink)
+                        Text("Get a reminder with the workout that's up next.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.muted)
+                    } else {
+                        Text(Gym.Schedule.summary(weekdays))
+                            .font(.headline)
+                            .foregroundStyle(Theme.ink)
+                        if let upcoming {
+                            Text("\(dayLabel(upcoming.date)): \(upcoming.day.name)")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.muted)
+                        }
+                        if remind {
+                            Label("Reminder at \(minutesText(remindMinutes))", systemImage: "bell")
+                                .font(.caption)
+                                .foregroundStyle(Theme.forest)
+                        }
+                    }
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.muted)
+            }
+            .padding(14)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.hairline))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// New personal bests and how far you've come.
+    private func progressCard(_ highlights: [Gym.Highlight]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("PROGRESS")
+                .font(.caption.weight(.semibold))
+                .tracking(0.4)
+                .foregroundStyle(Theme.forest)
+            ForEach(highlights) { highlight in
+                HStack(spacing: 12) {
+                    Image(systemName: highlight.kind == .best ? "trophy.fill" : "arrow.up.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(highlight.kind == .best ? Theme.lemonInk : Theme.forest)
+                        .frame(width: 32, height: 32)
+                        .background(highlight.kind == .best ? Theme.lemon : Theme.sage, in: Circle())
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(highlight.exercise)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.ink)
+                        Text(highlight.detail)
+                            .font(.footnote)
+                            .foregroundStyle(Theme.muted)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.hairline))
+    }
+
+    /// "Today", "Tomorrow" or "Wed".
+    private func dayLabel(_ date: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(date) { return "Today" }
+        if cal.isDateInTomorrow(date) { return "Tomorrow" }
+        return date.formatted(.dateTime.weekday(.wide))
     }
 
     private var emptyState: some View {
@@ -161,6 +256,7 @@ struct WorkoutDayView: View {
     @State private var editingExercise: Exercise?
     @State private var bumping = false
     @State private var renaming = false
+    @State private var healthNote: String?     // "Saved to Apple Health" after finishing
 
     private var exercises: [Exercise] { day.sortedExercises }
     private var doneCount: Int { exercises.filter(\.isDoneToday).count }
@@ -195,7 +291,10 @@ struct WorkoutDayView: View {
                 ForEach(exercises) { exercise in
                     ExerciseRow(exercise: exercise,
                                 onEdit: { editingExercise = exercise },
-                                onSetFinished: { startRest(after: exercise) })
+                                onSetFinished: {
+                                    noteStart()
+                                    startRest(after: exercise)
+                                })
                 }
                 .onDelete { offsets in
                     for index in offsets { context.delete(exercises[index]) }
@@ -205,22 +304,28 @@ struct WorkoutDayView: View {
                 Button("Add exercise", systemImage: "plus") { addingExercise = true }
                     .foregroundStyle(Theme.forest)
             } footer: {
-                Text("Tap the circle after each set to start your rest. Tap the name to change it or see your history.")
+                Text("Tap the next set when you finish it to start your rest. Got fewer reps? Tap the set again to change it. Tap a name to edit it or see your history.")
             }
 
             if day.isFinishedToday {
                 Section {
-                    Label("Finished today. Nice work!", systemImage: "checkmark.seal.fill")
-                        .font(.headline)
-                        .foregroundStyle(Theme.forest)
-                        .frame(maxWidth: .infinity)
-                        .listRowBackground(Color.clear)
+                    VStack(spacing: 6) {
+                        Label("Finished today. Nice work!", systemImage: "checkmark.seal.fill")
+                            .font(.headline)
+                            .foregroundStyle(Theme.forest)
+                        if let healthNote {
+                            Label(healthNote, systemImage: "heart.fill")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.muted)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(Color.clear)
                 }
             } else if doneCount > 0 {
                 Section {
                     Button {
-                        day.lastCompletedAt = .now
-                        if exercises.contains(where: { $0.weight != nil && $0.isDoneToday }) { bumping = true }
+                        finish()
                     } label: {
                         Label("Finish workout", systemImage: "flag.checkered")
                             .font(.headline)
@@ -275,6 +380,31 @@ struct WorkoutDayView: View {
         .sheet(isPresented: $renaming) { WorkoutDaySheet(editing: day) }
     }
 
+    /// Remembers when today's workout began: your first set.
+    private func noteStart() {
+        if day.startedAt.map(Calendar.current.isDateInToday) != true { day.startedAt = .now }
+    }
+
+    private func finish() {
+        let end = Date.now
+        day.lastCompletedAt = end
+        timer.skip()
+        if exercises.contains(where: { $0.weight != nil && $0.isDoneToday }) { bumping = true }
+
+        guard GymHealth.isOn, GymHealth.isAvailable else { return }
+        let started = day.startedAt.flatMap { Calendar.current.isDateInToday($0) ? $0 : nil }
+        let times = GymHealth.times(startedAt: started, finishedAt: end)
+        Task {
+            do {
+                try await GymHealth.save(start: times.start, end: times.end)
+                let minutes = Int(times.end.timeIntervalSince(times.start) / 60)
+                healthNote = "Saved to Apple Health (\(minutes) min)"
+            } catch {
+                healthNote = "Couldn't save to Apple Health. Check Settings › Health › Data Access & Devices."
+            }
+        }
+    }
+
     /// After a set: rest before the next set, or before the next exercise.
     /// No rest once every exercise is done.
     private func startRest(after exercise: Exercise) {
@@ -308,7 +438,8 @@ struct WorkoutDayView: View {
     }
 }
 
-/// Set ring, name, "3 × 12 · 80 lbs". Tap the ring after each set; it fills up as you go.
+/// Name, "3 × 12 · 80 lbs", and a button for each set. Tap the next set when you finish it;
+/// tap a finished set to say you got fewer reps.
 private struct ExerciseRow: View {
     @Environment(\.modelContext) private var context
     let exercise: Exercise
@@ -318,46 +449,29 @@ private struct ExerciseRow: View {
     private var done: Int { exercise.setsDoneToday }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Button {
-                withAnimation(.snappy) {
-                    if exercise.isDoneToday {
-                        exercise.resetSets(in: context)
-                    } else {
-                        exercise.finishSet(in: context)
-                        onSetFinished()
-                    }
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(exercise.name)
+                        .foregroundStyle(exercise.isDoneToday ? Theme.muted : Theme.ink)
+                        .strikethrough(exercise.isDoneToday, color: Theme.muted)
+                    Text(exercise.planLine)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.muted)
                 }
-            } label: {
-                SetRing(done: done, total: exercise.sets)
-            }
-            .buttonStyle(.borderless)
-            .sensoryFeedback(.increase, trigger: done)
-            .accessibilityLabel(exercise.isDoneToday
-                ? "All sets done. Tap to start over."
-                : "Finish set \(done + 1) of \(exercise.sets)")
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onEdit)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(exercise.name)
-                    .foregroundStyle(exercise.isDoneToday ? Theme.muted : Theme.ink)
-                    .strikethrough(exercise.isDoneToday, color: Theme.muted)
-                Text(detail)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.muted)
+                SetButtons(exercise: exercise, onSetFinished: onSetFinished)
             }
             Spacer(minLength: 8)
-            if let change = recentChange {
-                Text(change)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.forest)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Theme.sage, in: Capsule())
+            if exercise.isNewBestToday {
+                badge("Best!", systemImage: "trophy.fill")
+            } else if let change = recentChange {
+                badge(change, systemImage: nil)
             }
         }
         .padding(.vertical, 4)
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onEdit)
         .contextMenu {
             if !exercise.isDoneToday {
                 Button("Finish all sets", systemImage: "checkmark.circle") {
@@ -373,12 +487,6 @@ private struct ExerciseRow: View {
         }
     }
 
-    /// "3 × 12 · 80 lbs · 1 of 3 sets" while you're partway through.
-    private var detail: String {
-        guard done > 0, !exercise.isDoneToday else { return exercise.planLine }
-        return "\(exercise.planLine) · \(done) of \(exercise.sets) sets"
-    }
-
     /// "+5" when the weight is up since the last time you did it.
     private var recentChange: String? {
         guard let weight = exercise.weight,
@@ -386,42 +494,106 @@ private struct ExerciseRow: View {
               let before = last.weight, weight > before else { return nil }
         return "+\((weight - before).formatted(.number.precision(.fractionLength(0...1))))"
     }
+
+    private func badge(_ text: String, systemImage: String?) -> some View {
+        HStack(spacing: 4) {
+            if let systemImage { Image(systemName: systemImage) }
+            Text(text)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(Theme.forest)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Theme.sage, in: Capsule())
+    }
 }
 
-/// A circle that fills a slice per set and turns into a check when all are done.
-private struct SetRing: View {
-    let done: Int
-    let total: Int
+/// One button per set: empty until you finish it, then the reps you got.
+/// A set that came up short is shown in a warmer color.
+private struct SetButtons: View {
+    @Environment(\.modelContext) private var context
+    let exercise: Exercise
+    let onSetFinished: () -> Void
 
     var body: some View {
-        ZStack {
-            if done >= total {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 26))
-                    .foregroundStyle(Theme.forest)
-                    .transition(.scale.combined(with: .opacity))
-            } else {
-                Circle()
-                    .stroke(Theme.muted.opacity(0.4), lineWidth: 2)
-                Circle()
-                    .trim(from: 0, to: CGFloat(done) / CGFloat(max(total, 1)))
-                    .stroke(Theme.forest, style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                if done > 0 {
-                    Text("\(done)")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Theme.forest)
+        let got = exercise.repsToday
+        HStack(spacing: 6) {
+            ForEach(0..<exercise.sets, id: \.self) { index in
+                if index < got.count {
+                    finishedSet(index, reps: got[index])
+                } else {
+                    Button {
+                        withAnimation(.snappy) {
+                            exercise.finishSet(in: context)
+                            onSetFinished()
+                        }
+                    } label: {
+                        pill(index == got.count ? amount(exercise.reps) : "", filled: false, short: false)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Finish set \(got.count + 1) of \(exercise.sets)")
                 }
             }
         }
-        .frame(width: 26, height: 26)
-        .padding(2)
+        .sensoryFeedback(.increase, trigger: got.count)
+    }
+
+    /// Tap to change the reps, or to take the set back.
+    private func finishedSet(_ index: Int, reps: Int) -> some View {
+        Menu {
+            Picker("Set \(index + 1)", selection: Binding(
+                get: { reps },
+                set: { value in withAnimation(.snappy) { exercise.changeReps(ofSet: index, to: value) } }
+            )) {
+                ForEach(choices, id: \.self) { value in
+                    Text(value == exercise.reps ? "\(amount(value)) (all of them)" : amount(value)).tag(value)
+                }
+            }
+            .pickerStyle(.inline)
+            if index == exercise.setsDoneToday - 1 {
+                Button("Take back this set", systemImage: "arrow.uturn.backward") {
+                    withAnimation(.snappy) { exercise.undoSet(in: context) }
+                }
+            }
+        } label: {
+            pill(amount(reps), filled: true, short: reps < exercise.reps)
+        }
+        .accessibilityLabel("Set \(index + 1): \(amount(reps)). Tap to change.")
+    }
+
+    /// What you might have got: a few over the goal down to 1 (or 5-second steps when timed).
+    private var choices: [Int] {
+        let goal = exercise.reps
+        if exercise.isTimed {
+            return Array(stride(from: goal + 15, through: 5, by: -5)).filter { $0 > 0 }
+        }
+        return Array((max(1, goal - 29)...(goal + 3)).reversed())
+    }
+
+    private func amount(_ value: Int) -> String { exercise.isTimed ? "\(value)s" : "\(value)" }
+
+    private func pill(_ text: String, filled: Bool, short: Bool) -> some View {
+        Text(text.isEmpty ? " " : text)
+            .font(.subheadline.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(filled ? (short ? Theme.peachInk : Theme.onPrimary) : Theme.muted)
+            .frame(minWidth: 44, minHeight: 30)
+            .padding(.horizontal, 4)
+            .background {
+                if filled {
+                    Capsule().fill(short ? Theme.peach : Theme.forest)
+                } else {
+                    Capsule().strokeBorder(Theme.muted.opacity(0.45), lineWidth: 1.5)
+                }
+            }
+            .contentShape(Capsule())
     }
 }
 
 // MARK: After a workout
 
-/// "Up the weights for next time?" — one row per weighted exercise, +5 by default.
+/// "Up the weights for next time?" — one row per weighted exercise. +5 when you got every rep,
+/// the same weight when a set came up short.
 struct NextTimeSheet: View {
     @Environment(\.dismiss) private var dismiss
     let day: WorkoutDay
@@ -443,6 +615,11 @@ struct NextTimeSheet: View {
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(Theme.forest)
                                     .contentTransition(.numericText())
+                            }
+                            if exercise.missedRepsToday {
+                                Text("Got \(exercise.repsToday.map(String.init).joined(separator: " · ")) of \(exercise.reps). Stay here until you get them all.")
+                                    .font(.footnote)
+                                    .foregroundStyle(Theme.peachInk)
                             }
                             Picker("Change", selection: binding(for: exercise)) {
                                 Text("Same").tag(0.0)
@@ -469,7 +646,7 @@ struct NextTimeSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         for exercise in weighted {
-                            exercise.weight = (exercise.weight ?? 0) + (bumps[exercise.persistentModelID] ?? 5)
+                            exercise.weight = (exercise.weight ?? 0) + bump(for: exercise)
                         }
                         dismiss()
                     }
@@ -481,15 +658,20 @@ struct NextTimeSheet: View {
 
     private func binding(for exercise: Exercise) -> Binding<Double> {
         Binding(
-            get: { bumps[exercise.persistentModelID] ?? 5 },
+            get: { bump(for: exercise) },
             set: { value in withAnimation { bumps[exercise.persistentModelID] = value } }
         )
+    }
+
+    /// What you picked, or the suggestion: +5 only when you got every rep.
+    private func bump(for exercise: Exercise) -> Double {
+        bumps[exercise.persistentModelID] ?? (exercise.missedRepsToday ? 0 : 5)
     }
 
     /// "80 → 85 lbs"
     private func nextWeight(_ exercise: Exercise) -> String {
         let now = exercise.weight ?? 0
-        let bump = bumps[exercise.persistentModelID] ?? 5
+        let bump = bump(for: exercise)
         let nowText = now.formatted(.number.precision(.fractionLength(0...1)))
         return bump == 0 ? Exercise.pounds(now) : "\(nowText) → \(Exercise.pounds(now + bump))"
     }
@@ -606,13 +788,18 @@ struct ExerciseSheet: View {
                 .frame(height: 140)
                 .padding(.vertical, 6)
             }
+            if let best = exercise.personalBest, let weight = best.weight {
+                Label("Best: \(Exercise.pounds(weight)) on \(Gym.shortDate(best.date))", systemImage: "trophy.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.forest)
+            }
             ForEach(logs.prefix(8)) { log in
                 HStack {
                     Text(log.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
                     Spacer()
-                    Text([log.weight.map(Exercise.pounds), "\(log.sets) × \(log.reps)"]
+                    Text([log.weight.map(Exercise.pounds), log.repsLine]
                             .compactMap { $0 }.joined(separator: " · "))
-                        .foregroundStyle(Theme.muted)
+                        .foregroundStyle(log.hitAllReps ? Theme.muted : Theme.peachInk)
                 }
                 .font(.subheadline)
             }
@@ -744,5 +931,141 @@ struct ImportRoutineSheet: View {
             }
         }
         .presentationDetents([.large])
+    }
+}
+
+/// "7:00 AM" for 420 minutes after midnight.
+func minutesText(_ minutes: Int) -> String {
+    let date = Calendar.current.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: .now) ?? .now
+    return date.formatted(date: .omitted, time: .shortened)
+}
+
+// MARK: Schedule and Apple Health
+
+/// Pick your gym days, a reminder time, and whether workouts go to Apple Health.
+struct GymScheduleSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \WorkoutDay.order) private var days: [WorkoutDay]
+    @AppStorage(Gym.Schedule.daysKey) private var gymDays = ""
+    @AppStorage(Gym.Schedule.remindKey) private var remind = false
+    @AppStorage(Gym.Schedule.minutesKey) private var remindMinutes = 7 * 60
+    @AppStorage(GymHealth.settingKey) private var savesToHealth = false
+    @State private var healthDenied = false
+
+    private var weekdays: Set<Int> { Gym.Schedule.parse(gymDays) }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack(spacing: 6) {
+                        ForEach([2, 3, 4, 5, 6, 7, 1], id: \.self) { weekday in
+                            dayButton(weekday)
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
+                } header: {
+                    Text("Gym days")
+                } footer: {
+                    Text("Your workouts take turns on these days, starting with the one up next.")
+                }
+
+                Section {
+                    Toggle("Remind me on gym days", isOn: $remind)
+                        .disabled(weekdays.isEmpty)
+                    if remind {
+                        DatePicker("Time", selection: time, displayedComponents: .hourAndMinute)
+                    }
+                } footer: {
+                    if let first = Gym.plan(days, weekdays: weekdays, count: 1).first, remind {
+                        Text("For example: \u{201C}\(first.day.name) today\u{201D} at \(minutesText(remindMinutes)). No reminder once you've finished a workout that day.")
+                    }
+                }
+
+                if GymHealth.isAvailable {
+                    Section {
+                        Toggle("Save workouts to Apple Health", isOn: healthToggle)
+                    } footer: {
+                        if healthDenied {
+                            Text("Everyday isn't allowed to save workouts. Turn it on in Settings › Health › Data Access & Devices › EverydayApp.")
+                        } else {
+                            Text("When you tap Finish workout, it's saved as Strength Training with an estimate of the calories you burned. It shows in the Fitness app and counts toward your Move ring.")
+                        }
+                    }
+                }
+
+                if !upcoming.isEmpty {
+                    Section("Coming up") {
+                        ForEach(upcoming, id: \.date) { item in
+                            HStack {
+                                Text(item.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                                    .foregroundStyle(Theme.muted)
+                                    .frame(width: 96, alignment: .leading)
+                                Text(item.day.name)
+                                    .foregroundStyle(Theme.ink)
+                            }
+                            .font(.subheadline)
+                        }
+                    }
+                }
+            }
+            .tint(Theme.forest)
+            .navigationTitle("Schedule & Health")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .onChange(of: gymDays) { if weekdays.isEmpty { remind = false } }
+        }
+        .presentationDetents([.large])
+    }
+
+    private var upcoming: [(date: Date, day: WorkoutDay)] { Gym.plan(days, weekdays: weekdays, count: 5) }
+
+    private func dayButton(_ weekday: Int) -> some View {
+        let on = weekdays.contains(weekday)
+        let name = Calendar.current.veryShortWeekdaySymbols[weekday - 1]
+        return Button {
+            var updated = weekdays
+            if on { updated.remove(weekday) } else { updated.insert(weekday) }
+            withAnimation(.snappy) { gymDays = Gym.Schedule.text(updated) }
+        } label: {
+            Text(name)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(on ? Theme.onPrimary : Theme.ink)
+                .frame(maxWidth: .infinity, minHeight: 40)
+                .background(on ? Theme.forest : Theme.sage.opacity(0.6), in: Circle())
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(Calendar.current.weekdaySymbols[weekday - 1])
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    private var time: Binding<Date> {
+        Binding(
+            get: { Calendar.current.date(bySettingHour: remindMinutes / 60, minute: remindMinutes % 60,
+                                         second: 0, of: .now) ?? .now },
+            set: { date in
+                let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
+                remindMinutes = (parts.hour ?? 7) * 60 + (parts.minute ?? 0)
+            }
+        )
+    }
+
+    /// Turning it on asks Health for permission first.
+    private var healthToggle: Binding<Bool> {
+        Binding(
+            get: { savesToHealth },
+            set: { on in
+                guard on else { savesToHealth = false; return }
+                Task {
+                    let allowed = await GymHealth.requestAccess()
+                    savesToHealth = allowed
+                    healthDenied = !allowed
+                }
+            }
+        )
     }
 }

@@ -2,8 +2,8 @@ import Foundation
 import SwiftData
 import UserNotifications
 
-/// Sends a notification for each task at its "Remind me" time, and for each habit
-/// with a daily reminder.
+/// Sends a notification for each task at its "Remind me" time, for each habit
+/// with a daily reminder, and on your gym days ("Arm x Shoulder Day today").
 ///
 /// Rather than adding and removing notifications one by one, `update(for:)` clears
 /// everything and schedules again from the full task list. ContentView calls it whenever
@@ -43,10 +43,12 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
         ])
     }
 
-    func update(for tasks: [TaskItem], habits: [Habit] = []) async {
+    func update(for tasks: [TaskItem], habits: [Habit] = [], workouts: [WorkoutDay] = []) async {
         let due = tasks.filter(needsReminder)
             .sorted { ($0.nudgeDate ?? .distantFuture) < ($1.nudgeDate ?? .distantFuture) }
-        let habitRequests = requests(for: habits)
+        // Habits and gym days share whatever room tasks leave, soonest first.
+        let habitRequests = (requests(for: habits) + gymRequests(for: workouts))
+            .sorted { $0.date < $1.date }.map(\.request)
 
         // Ask for permission the first time there's something to remind you about.
         if !due.isEmpty || !habitRequests.isEmpty,
@@ -65,7 +67,7 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
                 scheduled += 1
             }
         }
-        // Habits fill whatever room is left, soonest first.
+        // Habits and gym days fill whatever room is left, soonest first.
         for request in habitRequests where scheduled < limit {
             try? await center.add(request)
             scheduled += 1
@@ -80,7 +82,7 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
 
     /// One notification per habit per day, soonest first. Each day is its own notification
     /// (rather than one that repeats) so today's can be skipped once you've checked in.
-    private func requests(for habits: [Habit]) -> [UNNotificationRequest] {
+    private func requests(for habits: [Habit]) -> [(date: Date, request: UNNotificationRequest)] {
         let cal = Calendar.current
         let today = cal.startOfDay(for: .now)
         var found: [(date: Date, request: UNNotificationRequest)] = []
@@ -114,7 +116,33 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
                 found.append((fire, UNNotificationRequest(identifier: "\(id)-\(offset)", content: content, trigger: trigger)))
             }
         }
-        return found.sorted { $0.date < $1.date }.map(\.request)
+        return found
+    }
+
+    // MARK: Gym days
+
+    /// "Arm x Shoulder Day today" on each of your gym days for the next two weeks,
+    /// with the workout that's up next. None today once you've finished a workout.
+    private func gymRequests(for workouts: [WorkoutDay]) -> [(date: Date, request: UNNotificationRequest)] {
+        let schedule = Gym.Schedule.current
+        guard schedule.remind, !workouts.isEmpty else { return [] }
+        let cal = Calendar.current
+        var found: [(date: Date, request: UNNotificationRequest)] = []
+
+        for (date, day) in Gym.plan(workouts, weekdays: schedule.weekdays, count: 10) {
+            guard let fire = cal.date(bySettingHour: schedule.minutes / 60, minute: schedule.minutes % 60,
+                                      second: 0, of: date), fire > .now, fire < .now.addingTimeInterval(15 * 86_400)
+            else { continue }
+            let content = UNMutableNotificationContent()
+            content.title = "\(day.name) today"
+            content.body = day.summary
+            content.sound = .default
+            let parts = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
+            let id = "gym-" + date.formatted(.iso8601.year().month().day())
+            found.append((fire, UNNotificationRequest(identifier: id, content: content, trigger: trigger)))
+        }
+        return found
     }
 
     /// Open tasks with a date. Skips tasks on your calendar, since the Calendar app
@@ -180,7 +208,8 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
 
         let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
         let habits = (try? context.fetch(FetchDescriptor<Habit>())) ?? []
-        await update(for: tasks, habits: habits)
+        let workouts = (try? context.fetch(FetchDescriptor<WorkoutDay>())) ?? []
+        await update(for: tasks, habits: habits, workouts: workouts)
     }
 
     nonisolated func userNotificationCenter(

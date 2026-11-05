@@ -73,6 +73,8 @@
         "GENERATE_INFOPLIST_FILE": "YES",
         "INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription": "Everyday shows events from your Google, Outlook, and iCloud calendars alongside your tasks, and lets you add, edit, and delete events and put tasks on your calendar.",
         "INFOPLIST_KEY_NSCalendarsUsageDescription": "Everyday shows events from your Google, Outlook, and iCloud calendars alongside your tasks, and lets you add, edit, and delete events and put tasks on your calendar.",
+        "INFOPLIST_KEY_NSHealthShareUsageDescription": "Everyday reads your weight to estimate the calories you burn at the gym.",
+        "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Everyday saves your finished gym workouts to Apple Health, so they show in the Fitness app and count toward your Move ring.",
         "INFOPLIST_KEY_NSSupportsLiveActivities": "YES",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]": "YES",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]": "YES",

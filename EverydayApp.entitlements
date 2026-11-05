@@ -3,6 +3,11 @@
 <plist version="1.0">
 <dict>
 	<!-- A shared folder the app and the home screen widget can both read and write. -->
+	<!-- Saving finished gym workouts to Apple Health (see GymHealth.swift). -->
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<key>com.apple.developer.healthkit.access</key>
+	<array/>
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.com.aubribowmanpersonalteam.EverydayApp</string>

@@ -10,6 +10,7 @@ final class WorkoutDay {
     var icon: String = "dumbbell"
     var order: Int = 0                  // position in the rotation
     var lastCompletedAt: Date?          // when you last tapped Finish workout
+    var startedAt: Date?                // your first set of the latest workout (for Apple Health)
     var createdAt: Date = Date.now
     @Relationship(deleteRule: .cascade, inverse: \Exercise.day)
     var exercises: [Exercise]? = []
@@ -59,6 +60,7 @@ final class Exercise {
     var lastDoneAt: Date?               // all sets done today = done in this workout
     var setsDone: Int = 0               // sets finished so far, on `setsDoneOn`
     var setsDoneOn: Date?
+    var setReps: [Int] = []             // reps (or seconds) you got in each of those sets
     var day: WorkoutDay?
     @Relationship(deleteRule: .cascade, inverse: \ExerciseLog.exercise)
     var logs: [ExerciseLog]? = []
@@ -82,24 +84,52 @@ final class Exercise {
         return min(setsDone, sets)
     }
 
-    /// One more set done. After the last set the whole exercise counts as done.
-    func finishSet(in context: ModelContext) {
-        setsDone = setsDoneToday + 1
+    /// What you got in each set finished today: [12, 12, 10]. Sets ticked before the app
+    /// kept track of reps count as all of them.
+    var repsToday: [Int] {
+        let count = setsDoneToday
+        guard count > 0 else { return [] }
+        let saved = setsDoneOn.map(Calendar.current.isDateInToday) == true ? setReps : []
+        let known = Array(saved.prefix(count))
+        return known + Array(repeating: reps, count: count - known.count)
+    }
+
+    /// True when a set today came up short of the goal.
+    var missedRepsToday: Bool { repsToday.contains { $0 < reps } }
+
+    /// One more set done, with all the reps unless you say otherwise.
+    /// After the last set the whole exercise counts as done.
+    func finishSet(in context: ModelContext, reps got: Int? = nil) {
+        setReps = repsToday + [got ?? reps]
+        setsDone = setReps.count
         setsDoneOn = .now
         if setsDone >= sets { complete(in: context) }
     }
 
+    /// Changes what you got in one set today ("only 10 of 12").
+    func changeReps(ofSet index: Int, to value: Int) {
+        var current = repsToday
+        guard current.indices.contains(index) else { return }
+        current[index] = max(value, 0)
+        setReps = current
+        setsDoneOn = .now
+        // Already in the history? Keep it in step.
+        for log in logs ?? [] where Calendar.current.isDateInToday(log.date) { log.setReps = current }
+    }
+
     /// Takes back the most recent set.
     func undoSet(in context: ModelContext) {
-        let remaining = max(setsDoneToday - 1, 0)
+        let remaining = Array(repsToday.dropLast())
         if isDoneToday { uncomplete(in: context) }
-        setsDone = remaining
+        setReps = remaining
+        setsDone = remaining.count
         setsDoneOn = .now
     }
 
     /// All sets at once.
     func finishAllSets(in context: ModelContext) {
         guard !isDoneToday else { return }
+        setReps = repsToday + Array(repeating: reps, count: max(sets - setsDoneToday, 0))
         setsDone = sets
         setsDoneOn = .now
         complete(in: context)
@@ -108,6 +138,7 @@ final class Exercise {
     /// Back to no sets done today.
     func resetSets(in context: ModelContext) {
         if isDoneToday { uncomplete(in: context) }
+        setReps = []
         setsDone = 0
         setsDoneOn = .now
     }
@@ -127,9 +158,26 @@ final class Exercise {
         "\(value.formatted(.number.precision(.fractionLength(0...1)))) lbs"
     }
 
+    /// Your heaviest time, the first time you lifted it.
+    var personalBest: ExerciseLog? {
+        (logs ?? []).filter { $0.weight != nil }
+            .sorted { $0.date < $1.date }
+            .max { ($0.weight ?? 0) < ($1.weight ?? 0) }
+    }
+
+    /// Today's entry, when it's heavier than every time before.
+    var isNewBestToday: Bool {
+        let all = logs ?? []
+        guard let today = all.first(where: { Calendar.current.isDateInToday($0.date) }),
+              let weight = today.weight else { return false }
+        let before = all.filter { !Calendar.current.isDateInToday($0.date) }.compactMap(\.weight)
+        return !before.isEmpty && weight > (before.max() ?? 0)
+    }
+
     /// Tick it off: saves what you did today to the history.
     func complete(in context: ModelContext) {
         let log = ExerciseLog(weight: weight, sets: sets, reps: reps)
+        log.setReps = repsToday
         context.insert(log)
         log.exercise = self
         lastDoneAt = .now
@@ -152,6 +200,7 @@ final class ExerciseLog {
     var weight: Double?
     var sets: Int = 0
     var reps: Int = 0
+    var setReps: [Int] = []             // what you got in each set; empty = all the reps
     var exercise: Exercise?
 
     init(date: Date = .now, weight: Double?, sets: Int, reps: Int) {
@@ -159,6 +208,14 @@ final class ExerciseLog {
         self.weight = weight
         self.sets = sets
         self.reps = reps
+    }
+
+    /// You got every rep in every set.
+    var hitAllReps: Bool { setReps.allSatisfy { $0 >= reps } }
+
+    /// "3 × 12", or "12 · 10 · 9" when some sets came up short.
+    var repsLine: String {
+        hitAllReps || setReps.isEmpty ? "\(sets) × \(reps)" : setReps.map(String.init).joined(separator: " · ")
     }
 }
 
@@ -170,6 +227,123 @@ enum Gym {
                 .max(by: { $0.lastCompletedAt! < $1.lastCompletedAt! }),
               let index = ordered.firstIndex(of: last) else { return ordered.first }
         return ordered[(index + 1) % ordered.count]
+    }
+
+    // MARK: Progress
+
+    struct Highlight: Identifiable {
+        enum Kind { case best, gain }
+        var kind: Kind
+        var exercise: String
+        var detail: String          // "Up 30 lbs since September"
+        var amount: Double          // for sorting
+        var date: Date
+        var id: String { "\(kind)-\(exercise)" }
+    }
+
+    /// What's worth celebrating: new personal bests from the last two weeks,
+    /// then the exercises that have gone up the most since you started.
+    static func highlights(in days: [WorkoutDay], limit: Int = 4) -> [Highlight] {
+        let cal = Calendar.current
+        let twoWeeksAgo = cal.date(byAdding: .day, value: -14, to: .now) ?? .now
+        var bests: [Highlight] = []
+        var gains: [Highlight] = []
+
+        for exercise in days.flatMap(\.sortedExercises) {
+            let logs = (exercise.logs ?? []).filter { $0.weight != nil }.sorted { $0.date < $1.date }
+            guard let first = logs.first, let latest = logs.last, logs.count >= 2,
+                  let start = first.weight, let now = latest.weight else { continue }
+
+            let before = logs.dropLast().compactMap(\.weight).max() ?? 0
+            if now > before, latest.date >= twoWeeksAgo {
+                // "New best: 130 lbs, up 20 since September", or "… on Nov 4" when it's your first gain.
+                let detail = now - start > now - before
+                    ? "New best: \(Exercise.pounds(now)), up \((now - start).formatted(.number.precision(.fractionLength(0...1)))) since \(since(first.date))"
+                    : "New best: \(Exercise.pounds(now)) on \(shortDate(latest.date))"
+                bests.append(Highlight(kind: .best, exercise: exercise.name, detail: detail,
+                                       amount: now - before, date: latest.date))
+            }
+            if now > start {
+                gains.append(Highlight(kind: .gain, exercise: exercise.name,
+                                       detail: "Up \(Exercise.pounds(now - start)) since \(since(first.date))",
+                                       amount: now - start, date: first.date))
+            }
+        }
+        // One line per exercise: a new best says more than the overall gain.
+        let bestNames = Set(bests.map(\.exercise))
+        gains.removeAll { bestNames.contains($0.exercise) }
+        return Array((bests.sorted { $0.date > $1.date } + gains.sorted { $0.amount > $1.amount }).prefix(limit))
+    }
+
+    /// "Oct 28"
+    static func shortDate(_ date: Date) -> String {
+        date.formatted(.dateTime.month(.abbreviated).day())
+    }
+
+    /// "September", "Oct 3" this month, or "September 2025" for another year.
+    static func since(_ date: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDate(date, equalTo: .now, toGranularity: .month) { return shortDate(date) }
+        if cal.isDate(date, equalTo: .now, toGranularity: .year) {
+            return date.formatted(.dateTime.month(.wide))
+        }
+        return date.formatted(.dateTime.month(.wide).year())
+    }
+
+    // MARK: Schedule
+
+    /// Your gym days and reminder, saved in the app's settings.
+    struct Schedule {
+        static let daysKey = "gymDays"              // weekdays, 1 = Sunday … 7 = Saturday: "2,4,6"
+        static let remindKey = "gymRemind"
+        static let minutesKey = "gymRemindMinutes"  // minutes after midnight
+
+        var weekdays: Set<Int>
+        var remind: Bool
+        var minutes: Int
+
+        static var current: Schedule {
+            let defaults = UserDefaults.standard
+            return Schedule(weekdays: parse(defaults.string(forKey: daysKey) ?? ""),
+                            remind: defaults.bool(forKey: remindKey),
+                            minutes: defaults.object(forKey: minutesKey) as? Int ?? 7 * 60)
+        }
+
+        static func parse(_ text: String) -> Set<Int> {
+            Set(text.split(separator: ",").compactMap { Int($0) }.filter { (1...7).contains($0) })
+        }
+
+        static func text(_ days: Set<Int>) -> String {
+            days.sorted().map(String.init).joined(separator: ",")
+        }
+
+        /// "Mon, Wed, Fri" (Monday first).
+        static func summary(_ days: Set<Int>) -> String {
+            let names = Calendar.current.shortWeekdaySymbols   // Sun, Mon, …
+            return [2, 3, 4, 5, 6, 7, 1].filter(days.contains).map { names[$0 - 1] }.joined(separator: ", ")
+        }
+    }
+
+    /// Which workout falls on each of your coming gym days, taking turns from the one up next.
+    /// Today counts if it's a gym day and you haven't worked out yet.
+    static func plan(_ days: [WorkoutDay], weekdays: Set<Int>, count: Int = 14) -> [(date: Date, day: WorkoutDay)] {
+        let ordered = days.sorted { $0.order < $1.order }
+        guard !weekdays.isEmpty, let next = nextDay(in: ordered),
+              let start = ordered.firstIndex(of: next) else { return [] }
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: .now)
+        let finishedToday = ordered.contains(where: \.isFinishedToday)
+
+        var result: [(Date, WorkoutDay)] = []
+        var offset = finishedToday ? 1 : 0
+        while result.count < count, offset < 7 * 8 {
+            if let date = cal.date(byAdding: .day, value: offset, to: today),
+               weekdays.contains(cal.component(.weekday, from: date)) {
+                result.append((date, ordered[(start + result.count) % ordered.count]))
+            }
+            offset += 1
+        }
+        return result
     }
 
     /// Adds parsed days to the end of your routine.
