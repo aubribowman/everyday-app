@@ -90,6 +90,21 @@ struct CalendarView: View {
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(Theme.ink)
                         Spacer()
+                        // Back to today from any week. Hidden when you're already on today.
+                        if !cal.isDateInToday(selectedDay) {
+                            Button {
+                                withAnimation(.snappy) { selectedDay = cal.startOfDay(for: .now) }
+                            } label: {
+                                Text("Today")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.forest)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Theme.sage, in: Capsule())
+                            }
+                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                            .accessibilityHint("Shows today's plans")
+                        }
                         Button { shiftWeek(-1) } label: {
                             Image(systemName: "chevron.left").foregroundStyle(Theme.ink).padding(8)
                         }
