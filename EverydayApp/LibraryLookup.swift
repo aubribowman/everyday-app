@@ -11,16 +11,74 @@ struct LookupResult: Identifiable, Hashable {
     var genre: String        // one of the app's genres when we can tell, else ""
     var year: String         // "2021", or "" for restaurants
     var coverURL: URL?
+
+    // Recipes only.
+    var ingredients: [String] = []
+    var steps: [String] = []
+    var link: String = ""
+    var minutes: Int = 0
+    var notes: String = ""   // e.g. what a TikTok cook wrote besides the recipe
 }
 
-/// Looks up books, shows and restaurants by name, using free services that need no account:
-/// Open Library for books, TVmaze for TV shows and Apple Maps for restaurants.
+/// Looks up books, shows, restaurants and recipes by name, using free services that need no account:
+/// Open Library for books, TVmaze for TV shows, Apple Maps for restaurants and TheMealDB for recipes.
 enum LibraryLookup {
     static func search(_ query: String, kind: LibraryKind) async throws -> [LookupResult] {
         switch kind {
         case .book: try await books(query)
         case .show: try await shows(query)
         case .restaurant: try await restaurants(query)
+        case .recipe: try await recipes(query)
+        }
+    }
+
+    // MARK: Recipes (TheMealDB)
+
+    private struct MealResponse: Decodable {
+        var meals: [[String: String?]]?
+    }
+
+    private static func recipes(_ query: String) async throws -> [LookupResult] {
+        var url = URLComponents(string: "https://www.themealdb.com/api/json/v1/1/search.php")!
+        url.queryItems = [.init(name: "s", value: query)]
+        let response: MealResponse = try await fetch(url.url!)
+        return (response.meals ?? []).prefix(6).map { meal in
+            func field(_ key: String) -> String {
+                ((meal[key] ?? nil) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            // TheMealDB lists up to 20 ingredients, each with its own amount.
+            let ingredients: [String] = (1...20).compactMap { index in
+                let name = field("strIngredient\(index)")
+                guard !name.isEmpty else { return nil }
+                let amount = field("strMeasure\(index)")
+                return amount.isEmpty ? name : "\(amount) \(name)"
+            }
+            let source = field("strSource")
+            // "From": the site the recipe came from (bbcgoodfood.com), or TheMealDB itself.
+            let site = URL(string: source)?.host?
+                .replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
+            return LookupResult(
+                title: field("strMeal"),
+                creator: site ?? "TheMealDB",
+                genre: course(field("strCategory")),
+                year: "",
+                coverURL: URL(string: field("strMealThumb")),
+                ingredients: ingredients,
+                steps: RecipeImporter.splitSteps(field("strInstructions")),
+                link: source
+            )
+        }
+    }
+
+    /// TheMealDB's categories ("Beef", "Dessert"…) mapped to the app's courses.
+    private static func course(_ category: String) -> String {
+        switch category {
+        case "Breakfast": "Breakfast"
+        case "Dessert": "Dessert"
+        case "Side": "Side"
+        case "Starter": "Snack"
+        case "": ""
+        default: "Dinner"
         }
     }
 
@@ -177,7 +235,7 @@ enum LibraryLookup {
         return URLSession(configuration: config)
     }()
 
-    private static func fetch<T: Decodable>(_ url: URL) async throws -> T {
+    static func fetch<T: Decodable>(_ url: URL) async throws -> T {
         let (data, response) = try await session.data(from: url)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
         return try JSONDecoder().decode(T.self, from: data)
@@ -204,7 +262,8 @@ private final class CoverCache {
     }
 }
 
-/// A book cover or show poster, or a tile with an icon when there isn't one (always, for restaurants).
+/// A book cover, show poster or recipe photo, or a tile with an icon when there isn't one
+/// (always, for restaurants).
 struct CoverImage: View {
     let url: URL?
     let kind: LibraryKind
@@ -212,8 +271,8 @@ struct CoverImage: View {
 
     @State private var image: UIImage?
 
-    /// Covers are taller than wide; restaurant tiles are square.
-    private var height: CGFloat { kind == .restaurant ? width : width * 1.45 }
+    /// Covers are taller than wide; restaurant tiles and recipe photos are square.
+    private var height: CGFloat { kind == .restaurant || kind == .recipe ? width : width * 1.45 }
 
     var body: some View {
         ZStack {

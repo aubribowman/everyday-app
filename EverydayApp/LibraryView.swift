@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import MapKit
 
-/// The Library tab: books, TV shows and restaurants you want to get to,
+/// The Library tab: books, TV shows, restaurants and recipes you want to get to,
 /// are in the middle of, or have finished (with a star rating).
 struct LibraryView: View {
     @Environment(\.modelContext) private var context
@@ -92,7 +92,7 @@ struct LibraryView: View {
                     .font(.largeTitle.weight(.semibold))
                     .tracking(-0.5)
                     .foregroundStyle(Theme.ink)
-                Text("Books, shows and places to get to.")
+                Text("Books, shows, places and recipes.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.muted)
             }
@@ -208,12 +208,17 @@ struct LibraryRow: View {
         }
     }
 
-    /// Want to → "Start" (or "Been" for restaurants); in progress → "Finish"; done → stars.
+    /// Want to → "Start" ("Been" for restaurants, "This week" for recipes);
+    /// in progress → "Finish" ("Made it" for recipes); done → stars.
     @ViewBuilder
     private var quickAction: some View {
         switch item.statusValue {
         case .want where item.kindValue == .restaurant:
             pill("Been", icon: "checkmark") { move(to: .done) }
+        case .want where item.kindValue == .recipe:
+            pill("This week", icon: "frying.pan") { move(to: .active) }
+        case .active where item.kindValue == .recipe:
+            pill("Made it", icon: "checkmark") { move(to: .done) }
         case .want:
             pill("Start", icon: "play.fill") { move(to: .active) }
         case .active:
@@ -278,6 +283,15 @@ struct LibraryItemSheet: View {
     @State private var rating: Int
     @State private var notes: String
     @State private var coverURL: String
+    // Recipes only.
+    @State private var link: String
+    @State private var ingredients: String
+    @State private var steps: String
+    @State private var minutes: Int
+    @State private var importing = false
+    @State private var importError: String?
+    @State private var addedToList: String?        // "Added 9 to Groceries"
+    @Query(sort: \TaskList.createdAt) private var lists: [TaskList]
     @State private var typingGenre = false
     @State private var customGenre = ""
     @State private var planningVisit = false
@@ -300,6 +314,10 @@ struct LibraryItemSheet: View {
         _rating = State(initialValue: item?.rating ?? 0)
         _notes = State(initialValue: item?.notes ?? "")
         _coverURL = State(initialValue: item?.coverURL ?? "")
+        _link = State(initialValue: item?.link ?? "")
+        _ingredients = State(initialValue: item?.ingredients ?? "")
+        _steps = State(initialValue: item?.steps ?? "")
+        _minutes = State(initialValue: item?.minutes ?? 0)
         // Saved items without a cover get matches right away, so you can add one.
         // Restaurants never have covers, so they only search when you change the name.
         let needsCover = item.map { $0.coverURL.isEmpty && $0.kindValue != .restaurant } ?? false
@@ -347,6 +365,8 @@ struct LibraryItemSheet: View {
                 }
 
                 suggestionSection
+
+                if kind == .recipe { recipeSections }
 
                 Section("Status") {
                     Picker("Status", selection: $status) {
@@ -411,7 +431,7 @@ struct LibraryItemSheet: View {
                 settledTitle = ""   // look the title up again as the new type
             }
             .alert(kind.genreLabel, isPresented: $typingGenre) {
-                TextField(kind == .restaurant ? "e.g. Ethiopian" : "e.g. Cozy mystery", text: $customGenre)
+                TextField(kind == .restaurant ? "e.g. Ethiopian" : kind == .recipe ? "e.g. Pasta" : "e.g. Cozy mystery", text: $customGenre)
                 Button("Cancel", role: .cancel) {}
                 Button("Use") {
                     let typed = customGenre.trimmingCharacters(in: .whitespaces)
@@ -420,6 +440,108 @@ struct LibraryItemSheet: View {
             }
         }
         .presentationDetents([.large])
+    }
+
+    // MARK: Recipes
+
+    /// Link (with "Get the recipe"), time, ingredients and steps.
+    @ViewBuilder
+    private var recipeSections: some View {
+        Section {
+            TextField("Paste a link to the recipe", text: $link)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            if !link.isEmpty {
+                Button {
+                    Task { await importFromLink() }
+                } label: {
+                    HStack {
+                        Label("Get the recipe from this link", systemImage: "arrow.down.circle")
+                        Spacer()
+                        if importing { ProgressView() }
+                    }
+                }
+                .disabled(importing)
+                if let url = URL(string: link), url.scheme?.hasPrefix("http") == true {
+                    Link(destination: url) {
+                        Label("Open the page", systemImage: "safari")
+                    }
+                }
+            } else {
+                // Text rather than URL, so a link copied from Notes or Messages works too.
+                PasteButton(payloadType: String.self) { strings in
+                    guard let first = strings.first?.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
+                    Task { @MainActor in
+                        link = first
+                        await importFromLink()
+                    }
+                }
+                .tint(Theme.forest)
+            }
+        } header: {
+            Text("Link")
+        } footer: {
+            if let importError {
+                Text(importError).foregroundStyle(Theme.peachInk)
+            } else {
+                Text("Works with most recipe sites and TikTok. It fills in the name, photo, ingredients and steps.")
+            }
+        }
+
+        Section {
+            Stepper(value: $minutes, in: 0...600, step: 5) {
+                Text(minutes == 0 ? "Total time: not set" : "Total time: \(LibraryItem.duration(minutes))")
+            }
+        }
+
+        Section {
+            TextField("One per line, e.g. 2 cups flour", text: $ingredients, axis: .vertical)
+                .lineLimit(4...20)
+            if !LibraryItem.lines(ingredients).isEmpty && !lists.isEmpty {
+                Menu {
+                    ForEach(lists) { list in
+                        Button(list.name, systemImage: list.icon) { addIngredients(to: list) }
+                    }
+                } label: {
+                    Label("Add ingredients to a list", systemImage: "cart.badge.plus")
+                }
+            }
+        } header: {
+            Text("Ingredients")
+        } footer: {
+            if let addedToList { Text(addedToList) }
+        }
+
+        Section("Steps") {
+            TextField("One step per line", text: $steps, axis: .vertical)
+                .lineLimit(4...30)
+        }
+    }
+
+    private func importFromLink() async {
+        importing = true
+        importError = nil
+        defer { importing = false }
+        do {
+            let result = try await RecipeImporter.recipe(from: link)
+            withAnimation(.snappy) { fill(from: result, onlyBlanks: false) }
+        } catch {
+            importError = (error as? LocalizedError)?.errorDescription
+                ?? "Couldn't open that page. Check your connection and try again."
+        }
+    }
+
+    /// Puts each ingredient on a list (a grocery list, say), grouped under the recipe's name.
+    private func addIngredients(to list: TaskList) {
+        let section = trimmedTitle.isEmpty ? "Recipe" : trimmedTitle
+        let lines = LibraryItem.lines(ingredients)
+        for line in lines {
+            let item = TaskItem(title: line, section: section)
+            context.insert(item)
+            item.list = list
+        }
+        withAnimation { addedToList = "Added \(lines.count) to \(list.name)." }
     }
 
     /// Matches for the title as you type. Tap one to fill in the details.
@@ -488,13 +610,27 @@ struct LibraryItemSheet: View {
     /// Fills in the details. For something already saved, only blanks are filled,
     /// so an author or genre you chose yourself stays.
     private func pick(_ result: LookupResult) {
-        title = result.title
-        settledTitle = result.title
-        let isNew = editing == nil
-        if !result.creator.isEmpty && (isNew || creator.isEmpty) { creator = result.creator }
-        if !result.genre.isEmpty && (isNew || genre.isEmpty) { genre = result.genre }
-        coverURL = result.coverURL?.absoluteString ?? ""
+        fill(from: result, onlyBlanks: editing != nil)
         withAnimation(.snappy) { suggestions = [] }
+    }
+
+    /// Copies a match (or an imported recipe) into the form. With `onlyBlanks`,
+    /// anything you've already filled in stays.
+    private func fill(from result: LookupResult, onlyBlanks: Bool) {
+        func use(_ value: String, for field: inout String) {
+            if !value.isEmpty && (!onlyBlanks || field.isEmpty) { field = value }
+        }
+        if !result.title.isEmpty { title = result.title }
+        settledTitle = title
+        use(result.creator, for: &creator)
+        use(result.genre, for: &genre)
+        if let cover = result.coverURL?.absoluteString, !cover.isEmpty { coverURL = cover }
+        else if !onlyBlanks { coverURL = "" }
+        use(result.link, for: &link)
+        use(result.ingredients.joined(separator: "\n"), for: &ingredients)
+        use(result.steps.joined(separator: "\n"), for: &steps)
+        if result.minutes > 0 && (!onlyBlanks || minutes == 0) { minutes = result.minutes }
+        if !result.notes.isEmpty && notes.isEmpty { notes = result.notes }
     }
 
     private func save() {
@@ -506,6 +642,12 @@ struct LibraryItemSheet: View {
         item.rating = status == .done ? rating : 0
         item.notes = notes
         item.coverURL = coverURL
+        if kind == .recipe {
+            item.link = link.trimmingCharacters(in: .whitespaces)
+            item.ingredients = ingredients
+            item.steps = steps
+            item.minutes = minutes
+        }
         if item.statusValue != status { item.statusValue = status }
         if editing == nil { context.insert(item) }
         dismiss()

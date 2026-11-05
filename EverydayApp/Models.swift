@@ -183,7 +183,7 @@ extension Array where Element == TaskItem {
 
 /// The three sections of the Library tab.
 enum LibraryKind: String, CaseIterable, Identifiable {
-    case book, show, restaurant
+    case book, show, restaurant, recipe
     var id: String { rawValue }
 
     var label: String {
@@ -191,6 +191,7 @@ enum LibraryKind: String, CaseIterable, Identifiable {
         case .book: "Books"
         case .show: "TV shows"
         case .restaurant: "Restaurants"
+        case .recipe: "Recipes"
         }
     }
     /// Used in titles like "New book" / "Edit restaurant".
@@ -199,6 +200,7 @@ enum LibraryKind: String, CaseIterable, Identifiable {
         case .book: "book"
         case .show: "show"
         case .restaurant: "restaurant"
+        case .recipe: "recipe"
         }
     }
     var emptyIcon: String {
@@ -206,6 +208,7 @@ enum LibraryKind: String, CaseIterable, Identifiable {
         case .book: "books.vertical"
         case .show: "tv"
         case .restaurant: "fork.knife"
+        case .recipe: "frying.pan"
         }
     }
     var emptyMessage: String {
@@ -213,14 +216,16 @@ enum LibraryKind: String, CaseIterable, Identifiable {
         case .book: "Tap + to save a book you want to read."
         case .show: "Tap + to save a show you want to watch."
         case .restaurant: "Tap + to save a place you want to try."
+        case .recipe: "Tap + to save a recipe. Paste a link and it fills itself in."
         }
     }
-    /// The second text field: who wrote it, where to watch it, or where the place is.
+    /// The second text field: who wrote it, where to watch it, where the place is, or where a recipe is from.
     var creatorPrompt: String {
         switch self {
         case .book: "Author (optional)"
         case .show: "Where to watch, e.g. Netflix (optional)"
         case .restaurant: "Neighborhood or address (optional)"
+        case .recipe: "From, e.g. NYT Cooking or Grandma (optional)"
         }
     }
     var notesPrompt: String {
@@ -228,10 +233,17 @@ enum LibraryKind: String, CaseIterable, Identifiable {
         case .book: "Who recommended it, why it caught your eye…"
         case .show: "Which season you're on, who recommended it…"
         case .restaurant: "What to order, who to go with…"
+        case .recipe: "Swaps you made, what to try next time…"
         }
     }
-    /// "Genre" for books and shows, "Cuisine" for restaurants.
-    var genreLabel: String { self == .restaurant ? "Cuisine" : "Genre" }
+    /// "Genre" for books and shows, "Cuisine" for restaurants, "Course" for recipes.
+    var genreLabel: String {
+        switch self {
+        case .book, .show: "Genre"
+        case .restaurant: "Cuisine"
+        case .recipe: "Course"
+        }
+    }
 
     /// Ready-made choices; you can also type your own.
     var genres: [String] {
@@ -245,6 +257,9 @@ enum LibraryKind: String, CaseIterable, Identifiable {
         case .restaurant:
             ["American", "Italian", "Mexican", "Japanese", "Chinese", "Thai", "Indian",
              "Mediterranean", "French", "Korean", "Vietnamese", "Café & bakery", "Brunch", "Bar"]
+        case .recipe:
+            ["Breakfast", "Lunch", "Dinner", "Side", "Salad", "Soup", "Snack",
+             "Dessert", "Baking", "Drinks"]
         }
     }
 
@@ -268,13 +283,16 @@ enum LibraryStatus: String, CaseIterable, Identifiable {
         case (.active, .book):       "Reading"
         case (.active, .show):       "Watching"
         case (.active, .restaurant): "Going soon"
+        case (.want, .recipe):       "Want to make"
+        case (.active, .recipe):     "This week"
         case (.done, .restaurant):   "Been there"
+        case (.done, .recipe):       "Made it"
         case (.done, _):             "Finished"
         }
     }
 }
 
-/// One book, TV show or restaurant on the Library tab.
+/// One book, TV show, restaurant or recipe on the Library tab.
 @Model
 final class LibraryItem {
     var title: String = ""
@@ -286,7 +304,13 @@ final class LibraryItem {
     var notes: String = ""
     var createdAt: Date = Date.now
     var statusChangedAt: Date = Date.now   // newest-first ordering within each section
-    var coverURL: String = ""      // book cover or show poster from the lookup ("" = none)
+    var coverURL: String = ""      // book cover, show poster or recipe photo ("" = none)
+
+    // Recipes only.
+    var link: String = ""          // the recipe's web page
+    var ingredients: String = ""   // one per line
+    var steps: String = ""         // one per line
+    var minutes: Int = 0           // total time, 0 = not set
 
     init(title: String, creator: String = "", kind: LibraryKind, status: LibraryStatus = .want,
          genre: String = "", rating: Int = 0) {
@@ -310,8 +334,31 @@ final class LibraryItem {
         }
     }
 
-    /// "Andy Weir · Sci-fi & fantasy"
+    /// "Andy Weir · Sci-fi & fantasy", or "NYT Cooking · Dinner · 45 min" for a recipe.
     var detailLine: String {
-        [creator, genre].filter { !$0.isEmpty }.joined(separator: " · ")
+        [creator, genre, timeLine].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    /// "45 min", "1 hr 30 min", or "" when not set.
+    var timeLine: String { Self.duration(minutes) }
+
+    static func duration(_ minutes: Int) -> String {
+        guard minutes > 0 else { return "" }
+        let hours = minutes / 60, rest = minutes % 60
+        if hours == 0 { return "\(rest) min" }
+        return rest == 0 ? "\(hours) hr" : "\(hours) hr \(rest) min"
+    }
+
+    var ingredientList: [String] { Self.lines(ingredients) }
+    var stepList: [String] { Self.lines(steps) }
+    var linkURL: URL? {
+        guard !link.isEmpty, let url = URL(string: link), url.scheme?.hasPrefix("http") == true else { return nil }
+        return url
+    }
+
+    static func lines(_ text: String) -> [String] {
+        text.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
     }
 }
