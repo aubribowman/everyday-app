@@ -30,7 +30,10 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
             _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
         }
 
-        center.removeAllPendingNotificationRequests()
+        // Clear old task reminders, but leave a running rest timer's alert alone.
+        let old = await center.pendingNotificationRequests().map(\.identifier)
+            .filter { $0 != RestTimer.notificationID }
+        center.removePendingNotificationRequests(withIdentifiers: old)
         var scheduled = 0
         for task in due {
             for request in requests(for: task) where scheduled < limit {

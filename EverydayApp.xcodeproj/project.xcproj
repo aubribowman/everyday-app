@@ -72,6 +72,7 @@
         "ENABLE_USER_SELECTED_FILES": "readonly",
         "GENERATE_INFOPLIST_FILE": "YES",
         "INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription": "Everyday shows events from your Google, Outlook, and iCloud calendars alongside your tasks, and lets you add, edit, and delete events and put tasks on your calendar.",
+        "INFOPLIST_KEY_NSSupportsLiveActivities": "YES",
         "INFOPLIST_KEY_NSCalendarsUsageDescription": "Everyday shows events from your Google, Outlook, and iCloud calendars alongside your tasks, and lets you add, edit, and delete events and put tasks on your calendar.",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]": "YES",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]": "YES",

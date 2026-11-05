@@ -56,7 +56,9 @@ final class Exercise {
     var reps: Int = 10
     var isTimed: Bool = false           // reps are seconds, e.g. a 30-second plank
     var weight: Double?                 // pounds; nil for bodyweight exercises
-    var lastDoneAt: Date?               // ticked today = done in this workout
+    var lastDoneAt: Date?               // all sets done today = done in this workout
+    var setsDone: Int = 0               // sets finished so far, on `setsDoneOn`
+    var setsDoneOn: Date?
     var day: WorkoutDay?
     @Relationship(deleteRule: .cascade, inverse: \ExerciseLog.exercise)
     var logs: [ExerciseLog]? = []
@@ -72,6 +74,43 @@ final class Exercise {
     }
 
     var isDoneToday: Bool { lastDoneAt.map(Calendar.current.isDateInToday) ?? false }
+
+    /// Sets finished today (starts over each day).
+    var setsDoneToday: Int {
+        if isDoneToday { return sets }
+        guard let setsDoneOn, Calendar.current.isDateInToday(setsDoneOn) else { return 0 }
+        return min(setsDone, sets)
+    }
+
+    /// One more set done. After the last set the whole exercise counts as done.
+    func finishSet(in context: ModelContext) {
+        setsDone = setsDoneToday + 1
+        setsDoneOn = .now
+        if setsDone >= sets { complete(in: context) }
+    }
+
+    /// Takes back the most recent set.
+    func undoSet(in context: ModelContext) {
+        let remaining = max(setsDoneToday - 1, 0)
+        if isDoneToday { uncomplete(in: context) }
+        setsDone = remaining
+        setsDoneOn = .now
+    }
+
+    /// All sets at once.
+    func finishAllSets(in context: ModelContext) {
+        guard !isDoneToday else { return }
+        setsDone = sets
+        setsDoneOn = .now
+        complete(in: context)
+    }
+
+    /// Back to no sets done today.
+    func resetSets(in context: ModelContext) {
+        if isDoneToday { uncomplete(in: context) }
+        setsDone = 0
+        setsDoneOn = .now
+    }
 
     /// "3 × 12 · 80 lbs" or "3 × 30 sec"
     var planLine: String {

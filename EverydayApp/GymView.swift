@@ -154,6 +154,8 @@ struct WorkoutDayView: View {
     @Environment(\.modelContext) private var context
     @Bindable var day: WorkoutDay
     @State private var editMode = EditMode.inactive   // .active while reordering
+    @AppStorage("restSeconds") private var restSeconds = 90   // 0 = no rest timer
+    private let timer = RestTimer.shared
 
     @State private var addingExercise = false
     @State private var editingExercise: Exercise?
@@ -191,7 +193,9 @@ struct WorkoutDayView: View {
 
             Section {
                 ForEach(exercises) { exercise in
-                    ExerciseRow(exercise: exercise) { editingExercise = exercise }
+                    ExerciseRow(exercise: exercise,
+                                onEdit: { editingExercise = exercise },
+                                onSetFinished: { startRest(after: exercise) })
                 }
                 .onDelete { offsets in
                     for index in offsets { context.delete(exercises[index]) }
@@ -201,7 +205,7 @@ struct WorkoutDayView: View {
                 Button("Add exercise", systemImage: "plus") { addingExercise = true }
                     .foregroundStyle(Theme.forest)
             } footer: {
-                Text("Tap the circle when you finish an exercise. Tap the name to change it or see your history.")
+                Text("Tap the circle after each set to start your rest. Tap the name to change it or see your history.")
             }
 
             if day.isFinishedToday {
@@ -232,6 +236,8 @@ struct WorkoutDayView: View {
             }
         }
         .environment(\.editMode, $editMode)
+        .safeAreaInset(edge: .bottom) { RestBar(timer: timer) }
+        .animation(.snappy, value: timer.end)
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .tint(Theme.forest)
@@ -242,6 +248,16 @@ struct WorkoutDayView: View {
                     Button("Done") { withAnimation { editMode = .inactive } }
                 } else {
                     Menu {
+                        Picker(selection: $restSeconds) {
+                            Text("Off").tag(0)
+                            ForEach([30, 45, 60, 90, 120, 180], id: \.self) { seconds in
+                                Text(seconds < 120 ? "\(seconds) seconds" : "\(seconds / 60) minutes").tag(seconds)
+                            }
+                        } label: {
+                            Label("Rest timer", systemImage: "timer")
+                            Text(restSeconds == 0 ? "Off" : restSeconds < 120 ? "\(restSeconds) sec" : "\(restSeconds / 60) min")
+                        }
+                        .pickerStyle(.menu)
                         Button("Rename workout", systemImage: "pencil") { renaming = true }
                         Button("Reorder exercises", systemImage: "arrow.up.arrow.down") {
                             withAnimation { editMode = .active }
@@ -259,6 +275,32 @@ struct WorkoutDayView: View {
         .sheet(isPresented: $renaming) { WorkoutDaySheet(editing: day) }
     }
 
+    /// After a set: rest before the next set, or before the next exercise.
+    /// No rest once every exercise is done.
+    private func startRest(after exercise: Exercise) {
+        guard restSeconds > 0 else { return }
+        let next: String
+        if !exercise.isDoneToday {
+            next = "Set \(exercise.setsDoneToday + 1) of \(exercise.sets) · \(exercise.name)"
+        } else if let upcoming = nextExercise(after: exercise) {
+            next = "Next: \(upcoming.name)"
+        } else {
+            timer.skip()
+            return
+        }
+        withAnimation(.snappy) {
+            timer.begin(seconds: restSeconds, next: next, workout: day.name)
+        }
+    }
+
+    /// The next exercise not done yet, going down the list and wrapping to the top.
+    private func nextExercise(after exercise: Exercise) -> Exercise? {
+        let all = exercises
+        guard let index = all.firstIndex(of: exercise) else { return nil }
+        let order = all[(index + 1)...] + all[..<index]
+        return order.first { !$0.isDoneToday }
+    }
+
     private func move(from source: IndexSet, to destination: Int) {
         var reordered = exercises
         reordered.move(fromOffsets: source, toOffset: destination)
@@ -266,33 +308,40 @@ struct WorkoutDayView: View {
     }
 }
 
-/// Tick circle, name, "3 × 12 · 80 lbs".
+/// Set ring, name, "3 × 12 · 80 lbs". Tap the ring after each set; it fills up as you go.
 private struct ExerciseRow: View {
     @Environment(\.modelContext) private var context
     let exercise: Exercise
     let onEdit: () -> Void
+    let onSetFinished: () -> Void
+
+    private var done: Int { exercise.setsDoneToday }
 
     var body: some View {
         HStack(spacing: 12) {
             Button {
                 withAnimation(.snappy) {
-                    if exercise.isDoneToday { exercise.uncomplete(in: context) }
-                    else { exercise.complete(in: context) }
+                    if exercise.isDoneToday {
+                        exercise.resetSets(in: context)
+                    } else {
+                        exercise.finishSet(in: context)
+                        onSetFinished()
+                    }
                 }
             } label: {
-                Image(systemName: exercise.isDoneToday ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
-                    .foregroundStyle(exercise.isDoneToday ? Theme.forest : Theme.muted.opacity(0.6))
-                    .contentTransition(.symbolEffect(.replace))
+                SetRing(done: done, total: exercise.sets)
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel(exercise.isDoneToday ? "Mark not done" : "Mark done")
+            .sensoryFeedback(.increase, trigger: done)
+            .accessibilityLabel(exercise.isDoneToday
+                ? "All sets done. Tap to start over."
+                : "Finish set \(done + 1) of \(exercise.sets)")
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(exercise.name)
                     .foregroundStyle(exercise.isDoneToday ? Theme.muted : Theme.ink)
                     .strikethrough(exercise.isDoneToday, color: Theme.muted)
-                Text(exercise.planLine)
+                Text(detail)
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
             }
@@ -309,6 +358,25 @@ private struct ExerciseRow: View {
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         .onTapGesture(perform: onEdit)
+        .contextMenu {
+            if !exercise.isDoneToday {
+                Button("Finish all sets", systemImage: "checkmark.circle") {
+                    withAnimation { exercise.finishAllSets(in: context) }
+                }
+            }
+            if done > 0 {
+                Button("Undo last set", systemImage: "arrow.uturn.backward") {
+                    withAnimation { exercise.undoSet(in: context) }
+                }
+            }
+            Button("Edit", systemImage: "pencil", action: onEdit)
+        }
+    }
+
+    /// "3 × 12 · 80 lbs · 1 of 3 sets" while you're partway through.
+    private var detail: String {
+        guard done > 0, !exercise.isDoneToday else { return exercise.planLine }
+        return "\(exercise.planLine) · \(done) of \(exercise.sets) sets"
     }
 
     /// "+5" when the weight is up since the last time you did it.
@@ -317,6 +385,37 @@ private struct ExerciseRow: View {
               let last = exercise.sortedLogs.first(where: { !Calendar.current.isDateInToday($0.date) }),
               let before = last.weight, weight > before else { return nil }
         return "+\((weight - before).formatted(.number.precision(.fractionLength(0...1))))"
+    }
+}
+
+/// A circle that fills a slice per set and turns into a check when all are done.
+private struct SetRing: View {
+    let done: Int
+    let total: Int
+
+    var body: some View {
+        ZStack {
+            if done >= total {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 26))
+                    .foregroundStyle(Theme.forest)
+                    .transition(.scale.combined(with: .opacity))
+            } else {
+                Circle()
+                    .stroke(Theme.muted.opacity(0.4), lineWidth: 2)
+                Circle()
+                    .trim(from: 0, to: CGFloat(done) / CGFloat(max(total, 1)))
+                    .stroke(Theme.forest, style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                if done > 0 {
+                    Text("\(done)")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Theme.forest)
+                }
+            }
+        }
+        .frame(width: 26, height: 26)
+        .padding(2)
     }
 }
 

@@ -57,6 +57,7 @@ struct ContentView: View {
             if phase == .active {
                 calendarStore.refreshAccess()
                 calendarStore.refresh()
+                RestTimer.shared.checkExpired()   // a rest that ended while the app was closed
             }
             // Leaving the app: save a fresh summary for the widget (times may have passed).
             if phase == .background {

@@ -14,7 +14,8 @@ struct TodayView: View {
     @State private var editingEvent: CalendarEvent?
     @State private var openLibraryItem: LibraryItem?
     @Query(sort: \WorkoutDay.order) private var workoutDays: [WorkoutDay]
-    @State private var showingGym = false
+    // Value-based, so screens opened from the Gym screen land on top of it, not under it.
+    @State private var path = NavigationPath()
 
     /// Today's finished workout if there is one, otherwise the next one in the rotation.
     private var workoutToShow: WorkoutDay? {
@@ -64,7 +65,7 @@ struct TodayView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     header
@@ -86,7 +87,6 @@ struct TodayView: View {
             .navigationDestination(for: TaskItem.self) { TaskDetailView(task: $0) }
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
             .gymDestinations()
-            .navigationDestination(isPresented: $showingGym) { GymView() }
             .sheet(item: $newKind) { NewTaskSheet(kind: $0) }
             .sheet(isPresented: $showingNewEvent) { EventEditSheet().environment(calendarStore) }
             .sheet(isPresented: $showingSettings) { SettingsSheet() }
@@ -197,7 +197,7 @@ struct TodayView: View {
     /// Your next workout (or today's, once finished). Tap it to start ticking off exercises.
     private func workoutCard(_ day: WorkoutDay) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Workout", action: "All workouts") { showingGym = true }
+            SectionHeader(title: "Workout", action: "All workouts") { path.append(GymRoute.gym) }
             NavigationLink(value: day) {
                 WorkoutDayCard(day: day, isNext: !day.isFinishedToday)
             }
