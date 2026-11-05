@@ -135,26 +135,20 @@ The app asks for these permissions:
 
 ## Project layout
 
-| File | What it does |
+The app's code is in `EverydayApp/`, with one folder per part of the app:
+
+| Folder | What's inside |
 | --- | --- |
-| `EverydayApp.swift` | App entry point; sets up storage, the calendar connection and Light/Dark mode |
-| `ContentView.swift` | The five tabs, plus keeping reminders and calendars up to date |
-| `TodayView.swift`, `CalendarView.swift`, `ListsView.swift`, `LibraryView.swift`, `TasksView.swift` | The five main screens |
-| `GymView.swift`, `Gym.swift` | The Gym screens, plus workouts, sets, weight history, personal bests, gym days and reading a routine pasted from Notes |
-| `GymHealth.swift` | Saves finished workouts to Apple Health |
-| `RestTimer.swift` | The rest countdown between sets, including the Lock Screen and Dynamic Island |
-| `Habits.swift`, `HabitsView.swift` | Daily habits: check-ins, streaks and the Habits screens |
-| `RecipeImporter.swift`, `TikTokRecipe.swift` | Read a recipe from a website link or a TikTok video |
-| `LibraryLookup.swift` | Looks up books, shows and restaurants as you type, and loads covers |
-| `Search.swift` | Searching everything from the magnifying glass |
-| `WidgetSync.swift` | Shares today's events and tasks with the home screen widget |
-| `EverydayWidget/` | The home screen widget (a separate part of the app that iOS runs on its own) |
-| `TaskDetailView.swift`, `ListDetailView.swift` | Screens for a single task or list |
-| `Sheets.swift`, `EventEditSheet.swift`, `CalendarSettingsSheet.swift` | Pop-up screens for adding and editing |
-| `Models.swift` | Tasks, lists, and Library books, shows, restaurants and recipes, including the repeat logic |
-| `CalendarStore.swift` | Reads and writes calendar events through Apple's EventKit |
-| `Reminders.swift` | Schedules task, habit and gym-day notifications |
-| `Components.swift`, `EventCard.swift` | Reusable pieces like checkboxes, rows and cards |
-| `Profile.swift` | Your profile picture: saving it and drawing the round avatar |
-| `Theme.swift` | Colors (light and dark), date formatting and appearance settings |
-| `SampleData.swift` | The demo data behind **Load sample data** |
+| `App/` | `EverydayApp.swift` (app entry point: storage, the calendar connection and Light/Dark mode), `ContentView.swift` (the five tabs, and keeping reminders and calendars up to date) and `SampleData.swift` (the demo data behind **Load sample data**) |
+| `Today/` | The Today screen, and `Profile.swift` for your profile picture and the round avatar |
+| `Calendar/` | The Calendar screen, adding and editing events, calendar settings, event cards, and `CalendarStore.swift`, which reads and writes events through Apple's EventKit |
+| `Tasks/` | The Tasks screen and the screen for a single task |
+| `Lists/` | The Lists screen and the screen for a single list |
+| `Library/` | The Library screen; `LibraryLookup.swift` looks up books, shows and restaurants as you type; `RecipeImporter.swift` and `TikTokRecipe.swift` read a recipe from a website link or a TikTok video |
+| `Habits/` | Daily habits (`Habits.swift`: check-ins and streaks) and their screens |
+| `Gym/` | Workouts, sets, weight history, personal bests, gym days and reading a routine pasted from Notes (`Gym.swift`); the Gym screens (`GymView.swift`); saving to Apple Health (`GymHealth.swift`); and the rest countdown on the Lock Screen and Dynamic Island (`RestTimer.swift`) |
+| `Shared/` | Used across the app: `Models.swift` (tasks, lists and Library items, including the repeat logic), `Components.swift` (checkboxes, rows and cards), `Sheets.swift` (pop-ups for adding things and settings), `Theme.swift` (colors, date formatting, appearance), `Search.swift`, `Reminders.swift` (task, habit and gym-day notifications) and `WidgetSync.swift` (shares today's plans with the widget) |
+
+`EverydayWidget/` (next to `EverydayApp/`) is the home screen widget and the rest timer's Lock Screen view, a separate part of the app that iOS runs on its own.
+
+New files go in the folder for their part of the app. Xcode picks them up automatically.
