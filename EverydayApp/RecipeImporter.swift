@@ -82,7 +82,7 @@ enum RecipeImporter {
     private static func result(from recipe: [String: Any]) -> LookupResult {
         let ingredients = (recipe["recipeIngredient"] as? [Any] ?? recipe["ingredients"] as? [Any] ?? [])
             .compactMap { $0 as? String }
-            .map(clean)
+            .map { clean($0) }
             // Some sites (Budget Bytes) add a cost to each ingredient: "2 Tbsp butter ($0.28)".
             .map { $0.replacingOccurrences(of: #"\s*\(\s*\$[\d.,]+\s*\)\s*$"#, with: "",
                                            options: .regularExpression) }

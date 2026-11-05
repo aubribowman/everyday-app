@@ -242,7 +242,7 @@ struct TikTokCaption {
             chunks = split(text, on: #"\n|[•▪●◦✓✔]"#)
         }
         // "1 tbsp butter 1/2 tbsp chilli powder" → two, when each starts with an amount.
-        chunks = chunks.flatMap(splitAmounts)
+        chunks = chunks.flatMap { splitAmounts($0) }
 
         return chunks.compactMap { chunk in
             var line = tidy(chunk)
@@ -271,7 +271,7 @@ struct TikTokCaption {
         } else {
             chunks = split(text, on: #"(?<=[.!?])\s+"#)
         }
-        return chunks.map(tidy).flatMap { RecipeImporter.splitSteps($0) }
+        return chunks.map { tidy($0) }.flatMap { RecipeImporter.splitSteps($0) }
     }
 
     /// Splits before each amount ("1/2 tbsp …"), but only in a chunk that starts with one,
