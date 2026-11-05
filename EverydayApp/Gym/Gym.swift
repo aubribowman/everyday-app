@@ -1,3 +1,7 @@
+// The gym models (workout days, exercises and their history) and the logic
+// behind them: the rotation, personal bests, gym days, and reading a routine
+// pasted from the Notes app. The screens are in GymView.swift.
+
 import Foundation
 import SwiftData
 
@@ -219,6 +223,7 @@ final class ExerciseLog {
     }
 }
 
+/// Gym logic that works across all your workout days.
 enum Gym {
     /// The day after the one you finished most recently (wrapping around), or the first day.
     static func nextDay(in days: [WorkoutDay]) -> WorkoutDay? {
@@ -231,6 +236,7 @@ enum Gym {
 
     // MARK: Progress
 
+    /// A line on the progress card, like "New best: 120 lbs, up 10 since Oct 2".
     struct Highlight: Identifiable {
         enum Kind { case best, gain }
         var kind: Kind
@@ -309,10 +315,12 @@ enum Gym {
                             minutes: defaults.object(forKey: minutesKey) as? Int ?? 7 * 60)
         }
 
+        /// "2,4,6" → [2, 4, 6]. Ignores anything that isn't 1–7.
         static func parse(_ text: String) -> Set<Int> {
             Set(text.split(separator: ",").compactMap { Int($0) }.filter { (1...7).contains($0) })
         }
 
+        /// [2, 4, 6] → "2,4,6", the format saved in settings.
         static func text(_ days: Set<Int>) -> String {
             days.sorted().map(String.init).joined(separator: ",")
         }
@@ -372,6 +380,7 @@ enum Gym {
 ///
 /// A line with a number or "3x12" is an exercise; any other line starts a new day.
 enum RoutineParser {
+    /// One exercise as read from the text, before it's saved. Weights are in lbs (kg are converted).
     struct Exercise: Equatable {
         var name: String
         var weight: Double?
@@ -390,6 +399,7 @@ enum RoutineParser {
     private static let weightPattern = try! NSRegularExpression(
         pattern: #"\(?\s*(\d+(?:\.\d+)?)\s*(lbs?|pounds?|kg)\s*\)?"#, options: .caseInsensitive)
 
+    /// Reads the whole pasted routine. Exercises before any day name go into a day called "Workout".
     static func parse(_ text: String) -> [Day] {
         var days: [Day] = []
         for rawLine in text.components(separatedBy: .newlines) {
@@ -417,6 +427,8 @@ enum RoutineParser {
         return text.split(separator: " ", omittingEmptySubsequences: true).joined(separator: " ")
     }
 
+    /// Reads one exercise line, or returns nil if the line is a day name.
+    /// The line needs a number in front ("1.") or sets × reps ("3x12") to count as an exercise.
     private static func exercise(from line: String) -> Exercise? {
         var text = line
         let isNumbered = firstMatch(numbered, in: text) != nil

@@ -162,6 +162,7 @@ struct ListContent: View {
         }
     }
 
+    /// Adds what's typed in the box to the list, in the chosen section.
     private func addItem() {
         let title = newTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }

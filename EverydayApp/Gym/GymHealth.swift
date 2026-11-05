@@ -40,6 +40,7 @@ enum GymHealth {
         return (end.addingTimeInterval(-45 * 60), end)
     }
 
+    /// Adds one strength training workout to Health, with its estimated calories.
     static func save(start: Date, end: Date) async throws {
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = .traditionalStrengthTraining

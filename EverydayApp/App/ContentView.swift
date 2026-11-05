@@ -1,10 +1,16 @@
+// The tab bar, plus the work that runs in the background while the app is open:
+// rebuilding reminders when tasks, habits or workouts change, and keeping the
+// home screen widget up to date.
+
 import SwiftUI
 import SwiftData
 
+/// The five tabs. TodayView takes a binding to this so its cards can switch tabs.
 enum AppTab: Hashable {
     case today, calendar, lists, library, tasks
 }
 
+/// The root view: a TabView with one NavigationStack per tab.
 struct ContentView: View {
     @Environment(CalendarStore.self) private var calendarStore
     @Environment(\.scenePhase) private var scenePhase

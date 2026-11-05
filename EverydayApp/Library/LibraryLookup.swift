@@ -23,6 +23,7 @@ struct LookupResult: Identifiable, Hashable {
 /// Looks up books, shows, restaurants and recipes by name, using free services that need no account:
 /// Open Library for books, TVmaze for TV shows, Apple Maps for restaurants and TheMealDB for recipes.
 enum LibraryLookup {
+    /// Up to six matches for `query`, from the service for that kind of item.
     static func search(_ query: String, kind: LibraryKind) async throws -> [LookupResult] {
         switch kind {
         case .book: try await books(query)
@@ -34,6 +35,7 @@ enum LibraryLookup {
 
     // MARK: Recipes (TheMealDB)
 
+    /// TheMealDB sends each meal as a flat dictionary: "strMeal", "strIngredient1"…"strIngredient20".
     private struct MealResponse: Decodable {
         var meals: [[String: String?]]?
     }
@@ -84,6 +86,7 @@ enum LibraryLookup {
 
     // MARK: Books (Open Library)
 
+    /// The parts of Open Library's search response the app uses (names match its JSON).
     private struct BookResponse: Decodable {
         struct Doc: Decodable {
             var title: String
@@ -134,6 +137,7 @@ enum LibraryLookup {
 
     // MARK: TV shows (TVmaze)
 
+    /// The parts of TVmaze's search response the app uses.
     private struct ShowResponse: Decodable {
         struct Show: Decodable {
             struct Channel: Decodable { var name: String }
@@ -166,6 +170,7 @@ enum LibraryLookup {
         }
     }
 
+    /// Maps TVmaze's genres to the app's genre list. "" when none fit.
     private static func showGenre(type: String, genres: [String]) -> String {
         // TVmaze puts these in "type" rather than genres.
         if ["Animation", "Reality", "Documentary"].contains(type) { return type }
@@ -183,6 +188,7 @@ enum LibraryLookup {
 
     // MARK: Restaurants (Apple Maps)
 
+    /// Places from Apple Maps that serve food or drink. The city or area goes in "creator".
     private static func restaurants(_ query: String) async throws -> [LookupResult] {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
@@ -235,6 +241,7 @@ enum LibraryLookup {
         return URLSession(configuration: config)
     }()
 
+    /// Downloads JSON and decodes it. Anything but a 200 response is an error.
     static func fetch<T: Decodable>(_ url: URL) async throws -> T {
         let (data, response) = try await session.data(from: url)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }

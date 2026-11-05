@@ -133,6 +133,24 @@ The app asks for these permissions:
 - **Apple Health** (only if you turn it on): to save finished workouts. The app also reads your
   weight to estimate calories.
 
+### Running it on your own iPhone
+
+The simulator works as is. To install the app on a real iPhone, Xcode has to sign it with your
+own Apple account, so swap in your own IDs first:
+
+1. In Xcode, select the **EverydayApp** project, then for both the **EverydayApp** and
+   **EverydayWidgetExtension** targets open **Signing & Capabilities** and choose your **Team**.
+2. Change both bundle identifiers from `com.aubribowmanpersonalteam…` to your own, for example
+   `com.yourname.EverydayApp` and `com.yourname.EverydayApp.EverydayWidget`.
+3. The app and widget share data through an App Group. Change
+   `group.com.aubribowmanpersonalteam.EverydayApp` to `group.com.yourname.EverydayApp` in all four
+   places it appears: `EverydayApp.entitlements`, `EverydayWidget.entitlements`,
+   `EverydayApp/Shared/WidgetSync.swift` and `EverydayWidget/WidgetSnapshot.swift`.
+
+If Xcode says your account can't use a capability (Apple Health or App Groups can need a paid
+developer account), remove it under **Signing & Capabilities**. The rest of the app still works;
+only Health saving or the widget's data is affected.
+
 ## Project layout
 
 The app's code is in `EverydayApp/`, with one folder per part of the app:

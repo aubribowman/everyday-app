@@ -1,6 +1,11 @@
+// The app's starting point. Opens the SwiftData database, connects the calendar,
+// and applies the Light/Dark setting. Everything else starts from ContentView.
+
 import SwiftUI
 import SwiftData
 
+/// The app itself. Shares the database (`container`) and the calendar
+/// (`CalendarStore`) with every screen through the SwiftUI environment.
 @main
 struct EverydayApp: App {
     @State private var calendarStore = CalendarStore()

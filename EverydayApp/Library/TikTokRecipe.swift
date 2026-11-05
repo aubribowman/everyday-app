@@ -1,3 +1,6 @@
+// Recipes from TikTok links: reading the video's details from the page, then
+// pulling the ingredients and steps out of the caption (TikTokCaption).
+
 import Foundation
 #if canImport(UIKit)
 import UIKit
@@ -13,6 +16,7 @@ import UIKit
 /// TikTok can change its pages at any time. If it does, this finds nothing and you get the usual
 /// "couldn't find a recipe" message; the link still saves.
 extension RecipeImporter {
+    /// True for tiktok.com and its short links (vm.tiktok.com, www.tiktok.com).
     static func isTikTok(_ url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         return host == "tiktok.com" || host.hasSuffix(".tiktok.com")
@@ -62,6 +66,7 @@ extension RecipeImporter {
 
     // MARK: Reading the page
 
+    /// What the app reads from a TikTok page. `mentions` are UTF-16 ranges in `caption`.
     struct TikTokVideo {
         var caption = ""
         var author = ""
@@ -233,6 +238,7 @@ struct TikTokCaption {
 
     private static let units = #"(?:tbsp|tsp|tablespoons?|teaspoons?|cups?|g|gr|grams?|kg|oz|ounces?|lbs?|pounds?|ml|l|cloves?|pinch|cans?|sticks?|slices?)"#
 
+    /// The text after the Ingredients header, as one ingredient per line.
     static func ingredientLines(_ text: String) -> [String] {
         var chunks: [String]
         // "-1 yellow onion -garlic -fresh basil" → one per dash.
@@ -262,6 +268,7 @@ struct TikTokCaption {
         }
     }
 
+    /// The text after the Steps header, as steps: numbered ("1."), one per line, or one per sentence.
     static func stepLines(_ text: String) -> [String] {
         let chunks: [String]
         if count(#"(?:^|\s)\d{1,2}[.)]\s"#, in: text) >= 2 {
@@ -301,16 +308,19 @@ struct TikTokCaption {
         return replace(#"\s*\n\s*"#, in: result, with: "\n")
     }
 
+    /// Collapses all whitespace (line breaks too) into single spaces.
     private static func tidy(_ text: String) -> String {
         replace(#"\s+"#, in: text, with: " ").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// The first sentence, cut to eight words.
     private static func firstSentence(_ text: String) -> String {
         let first = text.components(separatedBy: CharacterSet(charactersIn: ".!?\n")).first ?? text
         let words = first.split(separator: " ").prefix(8).joined(separator: " ")
         return words.trimmingCharacters(in: .whitespaces)
     }
 
+    /// The first web link that isn't back to TikTok.
     private static func firstLink(in text: String) -> String? {
         guard let regex = try? NSRegularExpression(pattern: #"https?://[^\s"”)]+"#),
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
@@ -320,17 +330,20 @@ struct TikTokCaption {
         return link
     }
 
+    /// Regex replace-all.
     private static func replace(_ pattern: String, in text: String, with replacement: String,
                                 caseInsensitive: Bool = false) -> String {
         text.replacingOccurrences(of: pattern, with: replacement,
                                   options: caseInsensitive ? [.regularExpression, .caseInsensitive] : .regularExpression)
     }
 
+    /// How many times a regex matches.
     private static func count(_ pattern: String, in text: String) -> Int {
         (try? NSRegularExpression(pattern: pattern))?
             .numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text)) ?? 0
     }
 
+    /// Splits on a regex, trimming each piece and dropping empty ones.
     private static func split(_ text: String, on pattern: String, caseInsensitive: Bool = false) -> [String] {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: caseInsensitive ? .caseInsensitive : [])
         else { return [text] }

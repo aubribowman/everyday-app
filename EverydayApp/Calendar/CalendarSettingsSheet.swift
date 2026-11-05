@@ -55,6 +55,7 @@ struct CalendarStatusCard: View {
         }
     }
 
+    /// What the status card does depends on calendar access: ask, open Settings, or manage calendars.
     private func tap() {
         switch store.access {
         case .granted:
@@ -101,6 +102,7 @@ struct CalendarSettingsSheet: View {
     }
 }
 
+/// One calendar in the settings list: show or hide it, and choose Work or Personal.
 struct CalendarSettingsRow: View {
     @Environment(CalendarStore.self) private var store
     let calendar: EKCalendar

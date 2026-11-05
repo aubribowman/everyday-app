@@ -1,3 +1,8 @@
+// The Gym screens: your routine, a single workout with set-by-set tracking,
+// the "next time" weight suggestions, editing exercises and days, importing a
+// routine from Notes, and picking your gym days.
+// The data and logic behind them are in Gym.swift.
+
 import SwiftUI
 import SwiftData
 import Charts
@@ -385,6 +390,7 @@ struct WorkoutDayView: View {
         if day.startedAt.map(Calendar.current.isDateInToday) != true { day.startedAt = .now }
     }
 
+    /// Marks the workout done, stops the rest timer, offers weight bumps, and saves to Apple Health if it's on.
     private func finish() {
         let end = Date.now
         day.lastCompletedAt = end
@@ -431,6 +437,7 @@ struct WorkoutDayView: View {
         return order.first { !$0.isDoneToday }
     }
 
+    /// Drag to reorder: renumbers every exercise to match the new order.
     private func move(from source: IndexSet, to destination: Int) {
         var reordered = exercises
         reordered.move(fromOffsets: source, toOffset: destination)
@@ -572,6 +579,7 @@ private struct SetButtons: View {
 
     private func amount(_ value: Int) -> String { exercise.isTimed ? "\(value)s" : "\(value)" }
 
+    /// One set's pill. Filled = done. `short` (fewer reps than planned) draws it in peach.
     private func pill(_ text: String, filled: Bool, short: Bool) -> some View {
         Text(text.isEmpty ? " " : text)
             .font(.subheadline.weight(.semibold))
@@ -656,6 +664,7 @@ struct NextTimeSheet: View {
         .presentationDetents([.large])
     }
 
+    /// The chosen bump for one exercise, as a binding for its picker.
     private func binding(for exercise: Exercise) -> Binding<Double> {
         Binding(
             get: { bump(for: exercise) },
@@ -1024,6 +1033,7 @@ struct GymScheduleSheet: View {
 
     private var upcoming: [(date: Date, day: WorkoutDay)] { Gym.plan(days, weekdays: weekdays, count: 5) }
 
+    /// A round day chip (1 = Sunday … 7 = Saturday). Tap to add or remove the gym day.
     private func dayButton(_ weekday: Int) -> some View {
         let on = weekdays.contains(weekday)
         let name = Calendar.current.veryShortWeekdaySymbols[weekday - 1]

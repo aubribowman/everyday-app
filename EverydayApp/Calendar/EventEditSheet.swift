@@ -181,12 +181,14 @@ struct EventEditSheet: View {
         Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
     }
 
+    /// New events start in the phone's default calendar.
     private func pickDefaultCalendar() {
         if draft.calendarID.isEmpty {
             draft.calendarID = store.defaultCalendar?.calendarIdentifier ?? ""
         }
     }
 
+    /// Saves to the calendar and closes. Errors (like a deleted event) show in an alert.
     private func save() {
         draft.title = draft.title.trimmingCharacters(in: .whitespaces)
         do {

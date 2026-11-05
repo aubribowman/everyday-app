@@ -58,6 +58,7 @@ struct RestTimerLiveActivity: Widget {
         }
     }
 
+    /// The Lock Screen banner: the workout, what's next, and the countdown.
     private func lockScreen(_ state: RestTimerAttributes.ContentState, workout: String,
                             isOver: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {

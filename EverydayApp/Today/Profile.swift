@@ -12,6 +12,7 @@ enum ProfilePhoto {
         URL.applicationSupportDirectory.appending(path: "profile-photo.jpg")
     }
 
+    /// Your saved picture, or nil if you haven't picked one.
     static func load() -> UIImage? {
         // Read via the URL itself; a plain path string would turn the space in
         // "Application Support" into "%20" and miss the file.
@@ -37,15 +38,16 @@ enum ProfilePhoto {
         try square.jpegData(compressionQuality: 0.85)?.write(to: fileURL, options: .atomic)
     }
 
+    /// Deletes the picture. Views then show your initials (or a person icon if there is no name).
     static func remove() {
         try? FileManager.default.removeItem(at: fileURL)
     }
 }
 
-/// Your round profile picture, or your initials when there's no picture.
+/// Your round profile picture, or your initials when there's no picture (a person icon with no name either).
 struct ProfileAvatar: View {
     var size: CGFloat = 44
-    @AppStorage("userName") private var userName = "Aubri Bowman"
+    @AppStorage("userName") private var userName = ""   // set in Settings; "" = no name yet
     @AppStorage(ProfilePhoto.versionKey) private var photoVersion = 0
     @State private var photo: UIImage?
 
@@ -59,6 +61,13 @@ struct ProfileAvatar: View {
                 Image(uiImage: photo)
                     .resizable()
                     .scaledToFill()
+            } else if initials.isEmpty {
+                // No photo and no name yet: a plain person icon.
+                Image(systemName: "person.fill")
+                    .font(.system(size: size * 0.42))
+                    .foregroundStyle(Theme.peachInk)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Theme.peach)
             } else {
                 Text(initials)
                     .font(.system(size: size * 0.36, weight: .semibold))

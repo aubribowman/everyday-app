@@ -1,3 +1,5 @@
+// The Today home screen widget (small, medium and large): your next events and today's tasks.
+
 import WidgetKit
 import SwiftUI
 
@@ -10,16 +12,20 @@ struct DayEntry: TimelineEntry {
     let snapshot: WidgetSnapshot?
 }
 
+/// Tells iOS what the widget shows and when to redraw it.
 struct Provider: TimelineProvider {
+    /// The blurred stand-in iOS shows while the widget loads.
     func placeholder(in context: Context) -> DayEntry {
         DayEntry(date: .now, snapshot: .sample)
     }
 
+    /// What the widget shows right now (also in the widget gallery).
     func getSnapshot(in context: Context, completion: @escaping (DayEntry) -> Void) {
         // The widget gallery shows example content if the app hasn't saved anything yet.
         completion(DayEntry(date: .now, snapshot: WidgetSnapshot.load() ?? (context.isPreview ? .sample : nil)))
     }
 
+    /// The widget's schedule for the rest of today.
     func getTimeline(in context: Context, completion: @escaping (Timeline<DayEntry>) -> Void) {
         let snapshot = WidgetSnapshot.load()
         let now = Date.now
@@ -37,6 +43,7 @@ struct Provider: TimelineProvider {
 
 // MARK: Views
 
+/// Lays out the widget for its size: small shows the next event, medium and large add tasks.
 struct EverydayWidgetView: View {
     @Environment(\.widgetFamily) private var family
     let entry: DayEntry
@@ -159,6 +166,7 @@ struct EverydayWidgetView: View {
             .foregroundStyle(WTheme.forest)
     }
 
+    /// Up to `limit` upcoming events, or "No more events".
     @ViewBuilder
     private func eventList(limit: Int) -> some View {
         if events.isEmpty {
@@ -187,6 +195,7 @@ struct EverydayWidgetView: View {
         }
     }
 
+    /// Up to `limit` open tasks, or "Nothing left today".
     @ViewBuilder
     private func taskList(limit: Int) -> some View {
         if tasks.isEmpty {

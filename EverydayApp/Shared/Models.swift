@@ -1,6 +1,15 @@
+// The main SwiftData models: lists, tasks, and Library items.
+// Habits are in Habits/Habits.swift and workouts are in Gym/Gym.swift.
+//
+// Every stored property has a default value, as SwiftData needs for adding
+// new properties without losing existing data. Enums are stored as their raw
+// String values (see `tint`, `kind`, `status`, `repeatRule`), with computed
+// properties that turn them back into enums.
+
 import Foundation
 import SwiftData
 
+/// A list on the Lists tab, like "Grocery shopping". Its items are TaskItems.
 @Model
 final class TaskList {
     var name: String = ""
@@ -59,6 +68,7 @@ extension TaskList {
         return seen
     }
 
+    /// Unchecked items in one section, like "Produce".
     func openItems(in section: String) -> [TaskItem] {
         openItems.filter { $0.section == section }
     }
@@ -73,6 +83,12 @@ extension TaskList {
     }
 }
 
+/// One task, reminder or list item. They're all the same model:
+/// - `list == nil`: a task on the Tasks tab. With a `dueDate` and a "Remind me"
+///   time it's a reminder.
+/// - `list != nil`: an item on a list. `quantity` and `section` are for groceries.
+/// 
+/// `repeatRule` is "never", "daily", "weekdays", "weekly" or "monthly".
 @Model
 final class TaskItem {
     var title: String = ""
@@ -168,12 +184,14 @@ extension TaskItem {
         }
     }
 
+    /// When the reminder notification goes off: the due time minus "Remind me" minutes.
     var nudgeDate: Date? {
         dueDate?.addingTimeInterval(TimeInterval(-remindMinutesBefore * 60))
     }
 }
 
 extension Array where Element == TaskItem {
+    /// Soonest first. Tasks without a date go last.
     var byDue: [TaskItem] {
         sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
     }
@@ -342,6 +360,7 @@ final class LibraryItem {
     /// "45 min", "1 hr 30 min", or "" when not set.
     var timeLine: String { Self.duration(minutes) }
 
+    /// "45 min", "1 hr", "1 hr 30 min".
     static func duration(_ minutes: Int) -> String {
         guard minutes > 0 else { return "" }
         let hours = minutes / 60, rest = minutes % 60
@@ -356,6 +375,7 @@ final class LibraryItem {
         return url
     }
 
+    /// Splits text stored "one per line" (ingredients, steps) into its lines. Blank lines are skipped.
     static func lines(_ text: String) -> [String] {
         text.components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespaces) }

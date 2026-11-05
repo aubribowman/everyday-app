@@ -4,9 +4,11 @@ import SwiftData
 /// Fills the app with data that mirrors the mockup. Used by the
 /// "Load sample data" button and by Xcode previews.
 enum SampleData {
+    /// Adds sample lists, tasks and Library items. Doesn't remove anything first.
     static func load(into context: ModelContext) {
         let cal = Calendar.current
 
+        /// A date `daysFromNow` days away, at the given time.
         func at(_ hour: Int, _ minute: Int = 0, daysFromNow: Int = 0) -> Date {
             let day = cal.date(byAdding: .day, value: daysFromNow, to: .now) ?? .now
             return cal.date(bySettingHour: hour, minute: minute, second: 0, of: day) ?? day

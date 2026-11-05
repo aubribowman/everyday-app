@@ -1,7 +1,11 @@
+// Colors, card style and date formatting used throughout the app.
+// Use the `Theme` colors in views, never `Palette` directly, so dark mode keeps working.
+
 import SwiftUI
 
 // MARK: - Palette (Saphinka Design)
 
+/// The raw brand colors. `Theme` below picks from these for each light/dark mode.
 enum Palette {
     static let peony   = Color(hex: 0xE5A3AD)
     static let cherry  = Color(hex: 0x8E2A21)
@@ -20,6 +24,7 @@ enum Palette {
 // automatically when the phone's appearance changes (Settings → Display & Brightness).
 // The dark colors come from the dark app icon: olive-black, sage green and soft pink.
 
+/// The colors views use. Each one has a light and a dark version.
 enum Theme {
     static let appName = "EverydayApp"
 
@@ -112,6 +117,7 @@ enum CardTint: String, CaseIterable, Identifiable {
 }
 
 extension Color {
+    /// `Color(hex: 0xE5A3AD)`
     init(hex: UInt32) {
         self.init(
             red: Double((hex >> 16) & 0xFF) / 255,
@@ -129,6 +135,7 @@ extension Color {
 }
 
 extension UIColor {
+    /// `UIColor(hex: 0xE5A3AD)`
     convenience init(hex: UInt32) {
         self.init(
             red: CGFloat((hex >> 16) & 0xFF) / 255,
@@ -141,6 +148,7 @@ extension UIColor {
 
 // MARK: - Card style
 
+/// The rounded card look. Use it through `.card()`.
 struct CardStyle: ViewModifier {
     var fill: Color
 
@@ -157,6 +165,7 @@ struct CardStyle: ViewModifier {
 }
 
 extension View {
+    /// Rounded card with padding. Plain (surface) cards get a thin border; tinted ones don't.
     func card(_ fill: Color = Theme.surface) -> some View {
         modifier(CardStyle(fill: fill))
     }

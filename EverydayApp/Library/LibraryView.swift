@@ -1,3 +1,7 @@
+// The Library tab and its sheets: the list of books, shows, restaurants and
+// recipes; one row; star ratings; the add/edit form (with look-up as you type
+// and recipe import from a link); and planning a restaurant visit.
+
 import SwiftUI
 import SwiftData
 import MapKit
@@ -37,10 +41,12 @@ struct LibraryView: View {
         return seen.sorted()
     }
 
+    /// "book.done": how a section is saved in `collapsedRaw`.
     private func key(_ status: LibraryStatus) -> String { "\(kind.rawValue).\(status.rawValue)" }
     private func isCollapsed(_ status: LibraryStatus) -> Bool {
         collapsedRaw.split(separator: ",").contains { $0 == key(status) }
     }
+    /// Folds the section away, or opens it again.
     private func toggle(_ status: LibraryStatus) {
         var keys = Set(collapsedRaw.split(separator: ",").map(String.init))
         if !keys.insert(key(status)).inserted { keys.remove(key(status)) }
@@ -119,6 +125,7 @@ struct LibraryView: View {
         .scrollClipDisabled()
     }
 
+    /// A genre filter chip. Filled when it's the active filter.
     private func chip(_ title: String, isOn: Bool, action: @escaping () -> Void) -> some View {
         Button(action: { withAnimation(.snappy, action) }) {
             Text(title)
@@ -158,6 +165,7 @@ struct LibraryView: View {
         }
     }
 
+    /// One section's items as a card of rows.
     private func card(_ list: [LibraryItem]) -> some View {
         DividedStack(items: list) { item in
             LibraryRow(item: item, onEdit: { editing = $0 }, onDelete: { context.delete($0) },
@@ -228,6 +236,7 @@ struct LibraryRow: View {
         }
     }
 
+    /// The small button that moves an item along ("Start", "Finish", "Made it").
     private func pill(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: icon)
@@ -519,6 +528,7 @@ struct LibraryItemSheet: View {
         }
     }
 
+    /// Reads the recipe at the pasted link and fills in the empty fields.
     private func importFromLink() async {
         importing = true
         importError = nil
@@ -581,6 +591,7 @@ struct LibraryItemSheet: View {
         }
     }
 
+    /// Searches as you type the title. Runs as a `.task(id:)`, so each keystroke cancels the last search.
     private func lookUp() async {
         let query = trimmedTitle
         guard query.count >= 2, query != settledTitle else {
@@ -633,6 +644,7 @@ struct LibraryItemSheet: View {
         if !result.notes.isEmpty && notes.isEmpty { notes = result.notes }
     }
 
+    /// Saves the form to a new item, or onto `editing`, then closes.
     private func save() {
         let trimmed = title.trimmingCharacters(in: .whitespaces)
         let item = editing ?? LibraryItem(title: trimmed, kind: kind)
@@ -663,6 +675,7 @@ struct PlanVisitSheet: View {
         EventEditSheet(prefill: Self.draft(for: restaurant))
     }
 
+    /// The starting event for a visit: "Dinner at …" for 90 minutes from 7 PM, tonight or (if it's already late) tomorrow.
     static func draft(for place: LibraryItem) -> CalendarStore.EventDraft {
         let cal = Calendar.current
         // Tonight at 7 if it's still the afternoon, otherwise tomorrow at 7.

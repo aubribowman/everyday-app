@@ -37,6 +37,7 @@ struct CalendarEvent: Identifiable, Hashable {
     }
 }
 
+/// The calendars from one account ("Gmail", "iCloud"…), for the calendar settings list.
 struct CalendarGroup: Identifiable {
     let name: String
     let calendars: [EKCalendar]
@@ -44,9 +45,16 @@ struct CalendarGroup: Identifiable {
 }
 
 /// Reads every calendar on the phone (Google, Outlook, iCloud...) through EventKit.
+///
+/// One instance is made in EverydayApp and shared through the environment.
+/// Views get events by calling `events(from:to:)` or `events(on:)`. Reading
+/// `changeToken` inside them makes SwiftUI redraw when any calendar changes.
+/// The Work/Personal colors and the hidden calendars are this app's own settings,
+/// saved in UserDefaults. They don't change anything in the Calendar app.
 @MainActor
 @Observable
 final class CalendarStore {
+    /// Whether the app may read calendars. `.denied` means it has to be turned on in iPhone Settings.
     enum Access { case notDetermined, granted, denied }
 
     private(set) var access: Access = .notDetermined
@@ -75,6 +83,7 @@ final class CalendarStore {
 
     // MARK: Access
 
+    /// Reads the current permission from iOS (it can change in Settings while the app is closed).
     func refreshAccess() {
         switch EKEventStore.authorizationStatus(for: .event) {
         case .fullAccess:
@@ -87,6 +96,7 @@ final class CalendarStore {
         }
     }
 
+    /// Shows iOS's calendar permission prompt, then updates `access`.
     func requestAccess() async {
         let _: Bool = await withCheckedContinuation { continuation in
             store.requestFullAccessToEvents { granted, error in
@@ -114,6 +124,7 @@ final class CalendarStore {
         reload()
     }
 
+    /// Re-reads the list of calendars and tells views to fetch their events again.
     func reload() {
         calendars = store.calendars(for: .event)
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
@@ -122,6 +133,8 @@ final class CalendarStore {
 
     // MARK: Events
 
+    /// Events from every visible calendar that overlap this time range, earliest first.
+    /// Repeating events come back once per occurrence.
     func events(from start: Date, to end: Date) -> [CalendarEvent] {
         _ = changeToken   // lets views refresh when calendars change
         guard access == .granted else { return [] }
@@ -133,12 +146,15 @@ final class CalendarStore {
             .sorted { $0.start < $1.start }
     }
 
+    /// Every event that touches this day.
     func events(on day: Date) -> [CalendarEvent] {
         let start = Calendar.current.startOfDay(for: day)
         let end = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? start
         return events(from: start, to: end)
     }
 
+    /// Copies an EventKit event into a `CalendarEvent`. Spots video calls (Zoom, Meet, Webex,
+    /// Teams) from the location, notes or link.
     private func makeEvent(_ event: EKEvent) -> CalendarEvent {
         let text = [event.location, event.notes, event.url?.absoluteString]
             .compactMap { $0 }
@@ -232,6 +248,7 @@ final class CalendarStore {
         reload()
     }
 
+    /// Deletes this one occurrence (a repeating event keeps its other dates).
     func delete(_ event: CalendarEvent) throws {
         guard let found = ekEvent(for: event) else { throw WriteError.eventNotFound }
         try store.remove(found, span: .thisEvent, commit: true)
@@ -302,11 +319,13 @@ final class CalendarStore {
         return calendar.source.sourceType == .exchange ? .work : .personal
     }
 
+    /// Colors this calendar's events as Work or Personal, in this app only.
     func setCategory(_ category: EventCategory, for calendar: EKCalendar) {
         categoryOverrides[calendar.calendarIdentifier] = category.rawValue
         UserDefaults.standard.set(categoryOverrides, forKey: "calendarCategories")
     }
 
+    /// Hidden calendars stay on the phone but aren't shown in this app.
     func isHidden(_ calendar: EKCalendar) -> Bool {
         hiddenCalendars.contains(calendar.calendarIdentifier)
     }
@@ -320,6 +339,7 @@ final class CalendarStore {
         UserDefaults.standard.set(Array(hiddenCalendars), forKey: "hiddenCalendars")
     }
 
+    /// Calendars grouped by account, in alphabetical order.
     var calendarGroups: [CalendarGroup] {
         Dictionary(grouping: calendars) { $0.source.title }
             .map { CalendarGroup(name: $0.key, calendars: $0.value) }

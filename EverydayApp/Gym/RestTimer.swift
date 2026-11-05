@@ -36,6 +36,8 @@ final class RestTimer {
 
     var isRunning: Bool { end.map { $0 > .now } ?? false }
 
+    /// Starts a new rest, replacing any running one. `next` is shown on the Lock Screen
+    /// and in the notification ("Set 2 of 3 · Leg Press").
     func begin(seconds: Int, next: String, workout: String) {
         let now = Date.now
         start = now
@@ -57,6 +59,7 @@ final class RestTimer {
         }
     }
 
+    /// Ends the rest early.
     func skip() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.notificationID])
         clear()
@@ -71,6 +74,8 @@ final class RestTimer {
 
     // MARK: Behind the scenes
 
+    /// Sets up all three ways the rest ends: a buzz if the app is open, a notification
+    /// if it isn't, and the Lock Screen / Dynamic Island countdown.
     private func scheduleEverything() {
         guard let start, let end else { return }
 
@@ -112,6 +117,7 @@ final class RestTimer {
         }
     }
 
+    /// Forgets the current rest and removes the Lock Screen countdown.
     private func clear() {
         finishTask?.cancel()
         finishTask = nil

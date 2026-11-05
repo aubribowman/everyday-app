@@ -1,6 +1,10 @@
+// The Lists tab: your featured list in full, a tile for each other list, and
+// the Gym card.
+
 import SwiftUI
 import SwiftData
 
+/// Shows every TaskList. Long-press a tile to edit or delete it.
 struct ListsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \TaskList.createdAt) private var lists: [TaskList]
@@ -114,6 +118,7 @@ extension ListsView {
     }
 }
 
+/// A small card for one list: its icon, name and how many items are left.
 struct ListTile: View {
     let list: TaskList
 

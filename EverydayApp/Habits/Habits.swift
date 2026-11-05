@@ -1,3 +1,6 @@
+// Daily habits: the Habit model, one HabitCheckIn per habit per day, streaks,
+// and the starter ideas. The screens are in HabitsView.swift.
+
 import Foundation
 import SwiftData
 
@@ -29,6 +32,7 @@ final class Habit {
 
     // MARK: Today
 
+    /// That day's check-in, if you checked in at all.
     private func checkIn(on day: Date) -> HabitCheckIn? {
         let start = Calendar.current.startOfDay(for: day)
         return (checkIns ?? []).first { $0.day == start }

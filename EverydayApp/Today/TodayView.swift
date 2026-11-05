@@ -1,13 +1,18 @@
+// The Today tab: today's calendar events and tasks, your habits, your next
+// workout, and what you're reading and watching.
+
 import SwiftUI
 import SwiftData
 
+/// The first tab. Cards here link to other tabs (through `tab`) or open screens
+/// on this tab's NavigationStack (through `path`).
 struct TodayView: View {
     @Binding var tab: AppTab
     @Environment(CalendarStore.self) private var calendarStore
     @Query(sort: \TaskItem.createdAt) private var allItems: [TaskItem]
     // Newest change first, so the book you started most recently is the one shown.
     @Query(sort: \LibraryItem.statusChangedAt, order: .reverse) private var library: [LibraryItem]
-    @AppStorage("userName") private var userName = "Aubri Bowman"
+    @AppStorage("userName") private var userName = ""   // set in Settings; "" = no name yet
     @State private var newKind: NewTaskKind?       // task or reminder being added
     @State private var showingNewEvent = false
     @State private var showingSettings = false
@@ -103,7 +108,7 @@ struct TodayView: View {
                 Label(Theme.appName, systemImage: "leaf")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.forest)
-                Text("\(greeting), \(firstName)")
+                Text(firstName.isEmpty ? greeting : "\(greeting), \(firstName)")
                     .font(.largeTitle.weight(.semibold))
                     .tracking(-0.5)
                     .foregroundStyle(Theme.ink)

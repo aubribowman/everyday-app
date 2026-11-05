@@ -43,6 +43,10 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
         ])
     }
 
+    /// Replaces every scheduled notification with a fresh set for these tasks, habits and gym days.
+    /// Asks for notification permission the first time there's something to schedule.
+    /// Task reminders come first. If there are more than `limit`, the latest ones wait
+    /// until the next update.
     func update(for tasks: [TaskItem], habits: [Habit] = [], workouts: [WorkoutDay] = []) async {
         let due = tasks.filter(needsReminder)
             .sorted { ($0.nudgeDate ?? .distantFuture) < ($1.nudgeDate ?? .distantFuture) }
@@ -152,6 +156,8 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
         return task.repeatRule != "never" || nudge > .now
     }
 
+    /// The notification for one task. A repeating task gets a notification that repeats
+    /// (weekdays need one for each day, Monday to Friday).
     private func requests(for task: TaskItem) -> [UNNotificationRequest] {
         guard let nudge = task.nudgeDate else { return [] }
 
@@ -212,6 +218,7 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
         await update(for: tasks, habits: habits, workouts: workouts)
     }
 
+    /// Called when you tap a button under a habit notification ("Done" or "Add one").
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse

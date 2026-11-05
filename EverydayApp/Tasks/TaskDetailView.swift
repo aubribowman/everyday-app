@@ -1,7 +1,12 @@
+// The screen for one task: its time, repeat, place, notes, icon and calendar
+// setting. Changes save as you make them.
+
 import SwiftUI
 import SwiftData
 import EventKit
 
+/// Opened by tapping a task. Edits `task` directly, and SwiftData saves the changes.
+/// When "Add to calendar" is on, it also keeps the matching calendar event up to date.
 struct TaskDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -275,6 +280,7 @@ struct TaskDetailView: View {
     }
 }
 
+/// The list a task is about ("Pick up groceries" → Grocery shopping), with a few of its items.
 struct LinkedListCard: View {
     let list: TaskList
 

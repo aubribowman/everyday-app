@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# Xcode: per-person settings and build output
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM

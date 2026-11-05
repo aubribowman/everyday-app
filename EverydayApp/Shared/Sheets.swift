@@ -9,6 +9,7 @@ enum NewTaskKind: String, Identifiable {
     var id: String { rawValue }
 }
 
+/// The form for a new task or reminder, opened from the + menu.
 struct NewTaskSheet: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -72,6 +73,7 @@ struct NewTaskSheet: View {
         // No `.presentationDetents` here, so the sheet opens at full height.
     }
 
+    /// Saves the new task and closes the sheet.
     private func add() {
         let task = TaskItem(title: title.trimmingCharacters(in: .whitespaces))
         task.dueDate = hasDate ? date : nil
@@ -203,7 +205,7 @@ struct ItemEditSheet: View {
 struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("appearance") private var appearance = AppearanceSetting.system
-    @AppStorage("userName") private var userName = "Aubri Bowman"
+    @AppStorage("userName") private var userName = ""   // set in Settings; "" = no name yet
     @AppStorage(ProfilePhoto.versionKey) private var photoVersion = 0
 
     // The photo picked from your library, before it's processed and saved.

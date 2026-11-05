@@ -30,6 +30,7 @@ struct WidgetSnapshot: Codable {
     static let fileName = "widget-snapshot.json"
 }
 
+/// Writes `WidgetSnapshot` for the home screen widget.
 @MainActor
 enum WidgetSync {
     /// Saves the summary and tells the widget to refresh. Called whenever tasks or calendars change.

@@ -7,6 +7,7 @@ import Foundation
 /// `<script type="application/ld+json">` tag). We read that, so it works on most sites
 /// without knowing anything about them.
 enum RecipeImporter {
+    /// Errors shown under the link field.
     enum Failure: LocalizedError {
         case notALink, noRecipe
         var errorDescription: String? {
@@ -17,6 +18,8 @@ enum RecipeImporter {
         }
     }
 
+    /// Downloads the page at `text` and reads the recipe on it. TikTok links go to `tikTok(html:link:)`.
+    /// Throws `Failure` when it isn't a link or has no recipe, or a URLError when the page won't load.
     static func recipe(from text: String) async throws -> LookupResult {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed), let scheme = url.scheme, scheme.hasPrefix("http"),
@@ -73,12 +76,14 @@ enum RecipeImporter {
         return nil
     }
 
+    /// "@type" can be "Recipe" or a list like ["Recipe", "NewsArticle"].
     private static func isRecipe(_ type: Any?) -> Bool {
         if let type = type as? String { return type == "Recipe" }
         if let types = type as? [String] { return types.contains("Recipe") }
         return false
     }
 
+    /// Turns schema.org Recipe JSON into the app's fields.
     private static func result(from recipe: [String: Any]) -> LookupResult {
         let ingredients = (recipe["recipeIngredient"] as? [Any] ?? recipe["ingredients"] as? [Any] ?? [])
             .compactMap { $0 as? String }
@@ -130,6 +135,7 @@ enum RecipeImporter {
         return lines
     }
 
+    /// "image" can be a link, a list of links, or an object with a "url".
     private static func image(_ value: Any?) -> URL? {
         if let text = value as? String { return URL(string: text) }
         if let list = value as? [Any] {
@@ -140,6 +146,7 @@ enum RecipeImporter {
         return nil
     }
 
+    /// "author" can be a name, a list, or an object with a "name".
     private static func name(of value: Any?) -> String? {
         if let text = value as? String, !text.isEmpty { return clean(text) }
         if let list = value as? [Any] {

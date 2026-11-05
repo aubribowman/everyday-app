@@ -21,6 +21,8 @@ enum AgendaEntry: Identifiable {
     }
 }
 
+/// The Calendar tab: a week strip, then the chosen day's events and tasks in time order.
+/// Events the app made for tasks ("Add to calendar") are left out, since the task shows instead.
 struct CalendarView: View {
     @Environment(CalendarStore.self) private var calendarStore
     @Query(sort: \TaskItem.createdAt) private var allItems: [TaskItem]
@@ -45,6 +47,7 @@ struct CalendarView: View {
             .filter { !taskEventIDs.contains($0.eventID) }
     }
 
+    /// Events that touch `day`, picked from the week's events so EventKit is only asked once.
     private func events(on day: Date, from pool: [CalendarEvent]) -> [CalendarEvent] {
         let start = cal.startOfDay(for: day)
         let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
@@ -187,6 +190,7 @@ struct CalendarView: View {
         }
     }
 
+    /// The seven day buttons. A dot means something is planned that day.
     private func weekStrip(pool: [CalendarEvent]) -> some View {
         HStack(spacing: 4) {
             ForEach(weekDays, id: \.self) { day in
@@ -226,6 +230,7 @@ struct CalendarView: View {
         }
     }
 
+    /// Moves the selected day a week back (-1) or forward (1).
     private func shiftWeek(_ direction: Int) {
         withAnimation(.snappy) {
             selectedDay = cal.date(byAdding: .day, value: 7 * direction, to: selectedDay) ?? selectedDay

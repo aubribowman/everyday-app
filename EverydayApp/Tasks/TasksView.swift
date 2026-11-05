@@ -1,6 +1,9 @@
+// The Tasks tab: every task that isn't on a list, grouped by when it's due.
+
 import SwiftUI
 import SwiftData
 
+/// Groups tasks into Overdue, Today, Upcoming, Someday (no date) and Done.
 struct TasksView: View {
     @Query(sort: \TaskItem.createdAt) private var allItems: [TaskItem]
     @State private var showingNewTask = false
@@ -66,6 +69,7 @@ struct TasksView: View {
         }
     }
 
+    /// A titled card of task rows. Draws nothing when there are no tasks.
     @ViewBuilder
     private func group(_ title: String, _ items: [TaskItem]) -> some View {
         if !items.isEmpty {

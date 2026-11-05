@@ -1,3 +1,6 @@
+// The habit screens: the tiles on Today, the full Habits screen, and the
+// add/edit sheet. Also FlowLayout, which wraps views onto new lines.
+
 import SwiftUI
 import SwiftData
 
@@ -5,6 +8,7 @@ import SwiftData
 enum HabitRoute: Hashable { case all }
 
 extension View {
+    /// The Habits screen any tab can push to.
     func habitDestinations() -> some View {
         navigationDestination(for: HabitRoute.self) { _ in HabitsView() }
     }
@@ -313,6 +317,7 @@ struct HabitWeekCard: View {
 
 // MARK: Add / edit
 
+/// Adds a habit, or edits `editing` when one is passed in.
 struct HabitSheet: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -491,6 +496,7 @@ struct FlowLayout: Layout {
 
     private struct Row { var indices: [Int] = []; var width: CGFloat = 0; var height: CGFloat = 0 }
 
+    /// Splits the views into rows that fit within `width`.
     private func arrange(width: CGFloat, subviews: Subviews) -> [Row] {
         var rows: [Row] = [Row()]
         for index in subviews.indices {

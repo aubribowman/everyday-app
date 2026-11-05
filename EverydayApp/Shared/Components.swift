@@ -1,5 +1,10 @@
+// Small views used on several screens: checkboxes, the + button and menu,
+// section headers, rows, and pickers for sections and icons.
+
 import SwiftUI
 
+/// A rounded square that shows a checkmark when `isOn`. It only draws itself, so
+/// wrap it in a Button to make it tappable.
 struct CheckBox: View {
     var isOn: Bool
 
@@ -21,6 +26,7 @@ struct CheckBox: View {
     }
 }
 
+/// The round green + button.
 struct AddButton: View {
     var action: () -> Void
 
@@ -79,6 +85,7 @@ struct EditableEvent<Content: View>: View {
     }
 }
 
+/// A section title, with an optional link like "See all" on the right.
 struct SectionHeader: View {
     let title: String
     var action: String? = nil
@@ -188,6 +195,7 @@ struct TaskRow: View {
         .padding(.vertical, 12)
     }
 
+    /// Checks the task off. A repeating task shows the tick briefly and then moves to its next date.
     private func complete() {
         guard task.repeats, !task.isDone else {
             withAnimation(.snappy) { task.toggleDone() }
@@ -256,6 +264,7 @@ struct SectionPicker: View {
     }
 }
 
+/// A choice in a picker: the value to save and the label to show.
 struct Option<Value: Hashable>: Identifiable {
     let value: Value
     let label: String
@@ -296,6 +305,7 @@ struct IconGrid: View {
         .padding(.vertical, 6)
     }
 
+    /// One icon button. `value` is saved as the selection, and `name` is read by VoiceOver.
     private func cell(value: String, image: String, name: String) -> some View {
         let isChosen = selection == value
         return Button { selection = value } label: {
