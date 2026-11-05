@@ -1,7 +1,7 @@
 # Everyday
 
-A calm iPhone app for your day: tasks, reminders, lists, your calendar, your gym routine and
-the books, shows and restaurants you want to get to, all in one place.
+A calm iPhone app for your day: tasks, reminders, lists, your calendar, daily habits, your gym
+routine, and the books, shows, restaurants and recipes you want to get to, all in one place.
 Built with SwiftUI and SwiftData.
 
 <p align="center">
@@ -14,7 +14,7 @@ Built with SwiftUI and SwiftData.
 
 ### Today
 See what's coming up on your calendar and what's on your list for today. Below that are your
-next workout and **Up next**: the book you're reading and the show you're watching (tap one
+habits, your next workout and **Up next**: the book you're reading and the show you're watching (tap one
 to open it). Tap **+** to add a task, a reminder or a calendar event.
 
 <p align="center">
@@ -23,7 +23,8 @@ to open it). Tap **+** to add a task, a reminder or a calendar event.
 
 ### Calendar
 A week view with your events from Google, Outlook and iCloud alongside your tasks.
-Events are colored by Work and Personal. You can create, edit and delete events, choose which
+Events are colored by Work and Personal. If you've moved to another day or week, tap **Today**
+to jump back. You can create, edit and delete events, choose which
 calendar they go in, and set an alert. Pull down to fetch the latest changes.
 
 <p align="center">
@@ -44,6 +45,12 @@ them off. Turn on **Add to calendar** to put a task on your real calendar.
   <img src="docs/screenshots/new-reminder.png" width="250" alt="New reminder screen">
 </p>
 
+### Habits
+Track the small things you want to do every day, like "Stretch" or "Drink water" (8 times).
+Tap a habit on Today to check it in. Its ring fills up as you go, and you'll see your streak
+and your best. Open **Habits** to add, edit and reorder them, see your last 7 days, or set a daily
+reminder. If you don't have any habits yet, you can add one of the suggestions with a tap.
+
 ### Lists
 Keep lists for anything: groceries, weekend chores, books to read. Grocery items can have a
 quantity and a section (like Produce), and checked items move to "In the basket". Lists can
@@ -54,9 +61,10 @@ be renamed and given their own icon and color.
 </p>
 
 ### Library
-Save books you want to read, TV shows you want to watch and restaurants you want to try.
+Save books you want to read, TV shows you want to watch, restaurants you want to try and
+recipes you want to cook.
 Books and shows move from **Want to read** to **Reading** to **Finished** (or the watching
-versions) with a single tap; restaurants go from **Want to try** to **Been there**. Give each a
+versions) with a single tap; restaurants go from **Want to try** to **Been there**, and recipes go from **This week** to **Made it**. Give each a
 genre or cuisine, filter by it, and rate what you've finished with 1–5 stars. Tap a section's
 heading to fold it away.
 
@@ -65,16 +73,32 @@ the genre and a cover. Books come from [Open Library](https://openlibrary.org), 
 [TVmaze](https://www.tvmaze.com) and restaurants from Apple Maps, so no account is needed.
 Long-press a restaurant and choose **Plan a visit** to put it on your calendar.
 
+**Recipes:** paste a link to a recipe and tap **Get the recipe from this link**. The app fills in
+the name, photo, time, ingredients and steps. This works with most recipe sites and with
+TikTok videos. For TikTok, the app reads the video's caption, and if the caption links to the
+full recipe, it uses that page. You can add a recipe's ingredients to one of your lists (a
+grocery list, say) with one tap.
+
 <p align="center">
   <img src="docs/screenshots/library-lookup.png" width="250" alt="Adding a book with matches and covers">
 </p>
 
 ### Gym
 Keep your workout routine in the app. Copy it from the Notes app and tap **Paste from Notes**;
-each day (like "Leg x Glutes Day") becomes a workout, and the days take turns in order. At the
-gym, tick off each exercise as you go. When you tap **Finish workout**, the app offers to raise
-each weight by 5 or 10 lbs for next time. Tap an exercise to change it or to see the weights
-you've used over time. Find it on Today or at the top of the **Lists** tab.
+each day (like "Leg x Glutes Day") becomes a workout, and the days take turns in order. Find it on Today or at the top of the **Lists** tab.
+
+- **Set by set:** at the gym, tap each set when you finish it. If you got fewer reps than
+  planned, tap the set again to change the number.
+- **Rest timer:** finishing a set starts a rest countdown. It shows on the Lock Screen and in
+  the Dynamic Island, and your phone buzzes when it's time for the next set.
+- **Next time:** when you tap **Finish workout**, the app suggests going up 5 lbs on exercises
+  where you got every rep, and staying at the same weight where you didn't.
+- **Progress:** a **Best!** badge shows when you beat your best weight. The Gym screen
+  shows your recent personal bests and how far you've come. Tap an exercise to see its history.
+- **Schedule and reminders:** choose your gym days and the app plans which workout falls on
+  each one. It can also remind you on gym days at a time you choose.
+- **Apple Health:** you can turn on saving finished workouts to Health as strength training, with
+  an estimate of the calories you burned. Turn it on in **Schedule & Health** on the Gym screen.
 
 <p align="center">
   <img src="docs/screenshots/gym.png" width="250" alt="Gym screen with workout days">
@@ -84,7 +108,7 @@ you've used over time. Find it on Today or at the top of the **Lists** tab.
 
 ### Search
 The magnifying glass at the top of each tab searches everything at once: tasks, list items,
-lists, books, shows, restaurants and calendar events.
+lists, books, shows, restaurants, recipes and calendar events.
 
 ### Home screen widget
 Add the **Today** widget to see your next events and today's tasks without opening the app.
@@ -101,11 +125,13 @@ Follows your iPhone's setting, or pick Light or Dark yourself by tapping your pr
 2. Choose an iPhone simulator or your own iPhone, then press **Run** (⌘R).
 3. To see the app filled in, go to the **Lists** tab and tap **Load sample data**.
 
-The app asks for two permissions:
+The app asks for these permissions:
 
 - **Calendar:** to show, add and edit your events. Your Google or Outlook calendars appear once
   those accounts are added in iPhone **Settings → Apps → Calendar → Calendar Accounts**.
-- **Notifications:** to send task reminders.
+- **Notifications:** for task, habit and gym reminders and the rest timer.
+- **Apple Health** (only if you turn it on): to save finished workouts. The app also reads your
+  weight to estimate calories.
 
 ## Project layout
 
@@ -114,16 +140,20 @@ The app asks for two permissions:
 | `EverydayApp.swift` | App entry point; sets up storage, the calendar connection and Light/Dark mode |
 | `ContentView.swift` | The five tabs, plus keeping reminders and calendars up to date |
 | `TodayView.swift`, `CalendarView.swift`, `ListsView.swift`, `LibraryView.swift`, `TasksView.swift` | The five main screens |
-| `GymView.swift`, `Gym.swift` | The Gym screens, plus workouts, exercises, weight history and reading a routine pasted from Notes |
+| `GymView.swift`, `Gym.swift` | The Gym screens, plus workouts, sets, weight history, personal bests, gym days and reading a routine pasted from Notes |
+| `GymHealth.swift` | Saves finished workouts to Apple Health |
+| `RestTimer.swift` | The rest countdown between sets, including the Lock Screen and Dynamic Island |
+| `Habits.swift`, `HabitsView.swift` | Daily habits: check-ins, streaks and the Habits screens |
+| `RecipeImporter.swift`, `TikTokRecipe.swift` | Read a recipe from a website link or a TikTok video |
 | `LibraryLookup.swift` | Looks up books, shows and restaurants as you type, and loads covers |
 | `Search.swift` | Searching everything from the magnifying glass |
 | `WidgetSync.swift` | Shares today's events and tasks with the home screen widget |
 | `EverydayWidget/` | The home screen widget (a separate part of the app that iOS runs on its own) |
 | `TaskDetailView.swift`, `ListDetailView.swift` | Screens for a single task or list |
 | `Sheets.swift`, `EventEditSheet.swift`, `CalendarSettingsSheet.swift` | Pop-up screens for adding and editing |
-| `Models.swift` | Tasks, lists, and Library books, shows and restaurants, including the repeat logic |
+| `Models.swift` | Tasks, lists, and Library books, shows, restaurants and recipes, including the repeat logic |
 | `CalendarStore.swift` | Reads and writes calendar events through Apple's EventKit |
-| `Reminders.swift` | Schedules task notifications |
+| `Reminders.swift` | Schedules task, habit and gym-day notifications |
 | `Components.swift`, `EventCard.swift` | Reusable pieces like checkboxes, rows and cards |
 | `Profile.swift` | Your profile picture: saving it and drawing the round avatar |
 | `Theme.swift` | Colors (light and dark), date formatting and appearance settings |
