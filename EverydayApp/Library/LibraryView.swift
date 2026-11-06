@@ -95,11 +95,11 @@ struct LibraryView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Library")
-                    .font(.largeTitle.weight(.semibold))
+                    .font(.display(.largeTitle))
                     .tracking(-0.5)
                     .foregroundStyle(Theme.ink)
                 Text("Books, shows, places and recipes.")
-                    .font(.subheadline)
+                    .font(.sans(.subheadline))
                     .foregroundStyle(Theme.muted)
             }
             Spacer()
@@ -129,7 +129,7 @@ struct LibraryView: View {
     private func chip(_ title: String, isOn: Bool, action: @escaping () -> Void) -> some View {
         Button(action: { withAnimation(.snappy, action) }) {
             Text(title)
-                .font(.footnote.weight(.medium))
+                .font(.sans(.footnote, .medium))
                 .foregroundStyle(isOn ? Theme.onPrimary : Theme.forest)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
@@ -148,11 +148,11 @@ struct LibraryView: View {
                 Button { toggle(status) } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "chevron.right")
-                            .font(.caption2.weight(.bold))
+                            .font(.sans(.caption2, .bold))
                             .rotationEffect(.degrees(collapsed ? 0 : 90))
                         Text("\(status.label(for: kind).uppercased()) · \(list.count)")
                     }
-                    .font(.caption.weight(.semibold))
+                    .font(.sans(.caption, .semibold))
                     .tracking(0.4)
                     .foregroundStyle(Theme.muted)
                     .contentShape(Rectangle())
@@ -193,7 +193,7 @@ struct LibraryRow: View {
                     .foregroundStyle(Theme.ink)
                 if !item.detailLine.isEmpty {
                     Text(item.detailLine)
-                        .font(.footnote)
+                        .font(.sans(.footnote))
                         .foregroundStyle(Theme.muted)
                 }
             }
@@ -240,7 +240,7 @@ struct LibraryRow: View {
     private func pill(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: icon)
-                .font(.footnote.weight(.medium))
+                .font(.sans(.footnote, .medium))
                 .foregroundStyle(Theme.forest)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
@@ -370,7 +370,7 @@ struct LibraryItemSheet: View {
                         customGenre = ""
                         typingGenre = true
                     }
-                    .font(.subheadline)
+                    .font(.sans(.subheadline))
                 }
 
                 suggestionSection
@@ -569,7 +569,7 @@ struct LibraryItemSheet: View {
                                     .lineLimit(2)
                                 Text([result.creator, result.year, result.genre]
                                         .filter { !$0.isEmpty }.joined(separator: " · "))
-                                    .font(.footnote)
+                                    .font(.sans(.footnote))
                                     .foregroundStyle(Theme.muted)
                                     .lineLimit(1)
                             }
@@ -585,7 +585,7 @@ struct LibraryItemSheet: View {
         } else if lookupFailed {
             Section {
                 Text("Couldn't look that up. Check your connection, or fill it in yourself.")
-                    .font(.footnote)
+                    .font(.sans(.footnote))
                     .foregroundStyle(Theme.muted)
             }
         }

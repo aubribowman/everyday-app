@@ -24,11 +24,11 @@ struct ListsView: View {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Your lists")
-                                .font(.largeTitle.weight(.semibold))
+                                .font(.display(.largeTitle))
                                 .tracking(-0.5)
                                 .foregroundStyle(Theme.ink)
                             Text("A place for everything on your mind.")
-                                .font(.subheadline)
+                                .font(.sans(.subheadline))
                                 .foregroundStyle(Theme.muted)
                         }
                         Spacer()
@@ -95,16 +95,16 @@ extension ListsView {
                 .foregroundStyle(Theme.lavenderInk)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Gym routine")
-                    .font(.headline)
+                    .font(.sans(.headline))
                     .foregroundStyle(Theme.ink)
                 Text(gymSubtitle)
-                    .font(.caption)
+                    .font(.sans(.caption))
                     .foregroundStyle(Theme.lavenderInk)
                     .lineLimit(1)
             }
             Spacer()
             Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
+                .font(.sans(.footnote, .semibold))
                 .foregroundStyle(Theme.lavenderInk)
         }
         .padding(16)
@@ -130,11 +130,11 @@ struct ListTile: View {
                 .foregroundStyle(tint.ink)
             Spacer(minLength: 14)
             Text(list.name)
-                .font(.headline)
+                .font(.sans(.headline))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)
             Text("\(list.remainingCount) \(list.countPhrase)")
-                .font(.caption)
+                .font(.sans(.caption))
                 .foregroundStyle(tint.ink)
         }
         .frame(maxWidth: .infinity, minHeight: 100, alignment: .leading)

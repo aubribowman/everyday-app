@@ -224,7 +224,7 @@ struct SettingsSheet: View {
                         // Apple's photo picker: no permission prompt needed, you only share the one photo.
                         PhotosPicker(selection: $pickedPhoto, matching: .images) {
                             Text(hasPhoto ? "Change photo" : "Choose photo")
-                                .font(.subheadline.weight(.medium))
+                                .font(.sans(.subheadline, .medium))
                         }
                         if hasPhoto {
                             Button("Remove photo", role: .destructive) {
@@ -233,7 +233,7 @@ struct SettingsSheet: View {
                                 hasPhoto = false
                                 photoVersion += 1
                             }
-                            .font(.subheadline)
+                            .font(.sans(.subheadline))
                         }
                     }
                     .frame(maxWidth: .infinity)

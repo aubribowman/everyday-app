@@ -40,7 +40,7 @@ struct ListContent: View {
                     NavigationLink(value: reminder) {
                         Label(due.dayTimeText + (reminder.location.isEmpty ? "" : " · \(reminder.location)"),
                               systemImage: "bell")
-                            .font(.footnote.weight(.medium))
+                            .font(.sans(.footnote, .medium))
                             .foregroundStyle(Theme.forest)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 12)
@@ -54,7 +54,7 @@ struct ListContent: View {
                     VStack(alignment: .leading, spacing: 0) {
                         if !section.isEmpty {
                             Text(section.uppercased())
-                                .font(.caption2.weight(.semibold))
+                                .font(.sans(.caption2, .semibold))
                                 .tracking(0.4)
                                 .foregroundStyle(Theme.muted)
                                 .padding(.top, 4)
@@ -66,7 +66,7 @@ struct ListContent: View {
 
                 if list.totalCount == 0 {
                     Text("Nothing here yet. Add your first item below.")
-                        .font(.subheadline)
+                        .font(.sans(.subheadline))
                         .foregroundStyle(Theme.muted)
                 }
 
@@ -79,7 +79,7 @@ struct ListContent: View {
                             Image(systemName: showDone ? "chevron.down" : "chevron.right")
                             Text("\(list.doneLabel.uppercased()) · \(list.doneCount)")
                         }
-                        .font(.caption2.weight(.semibold))
+                        .font(.sans(.caption2, .semibold))
                         .tracking(0.4)
                         .foregroundStyle(Theme.muted)
                     }
@@ -113,7 +113,7 @@ struct ListContent: View {
                         .foregroundStyle(Theme.muted)
                         .frame(width: 70)
                 }
-                .font(.body.weight(.medium))
+                .font(.sans(.body, .medium))
             }
             .padding(.horizontal, 6)
         }
@@ -125,7 +125,7 @@ struct ListContent: View {
             HStack(spacing: 10) {
                 Image(systemName: list.icon).foregroundStyle(Theme.forest)
                 Text(list.name)
-                    .font(.title3.weight(.semibold))
+                    .font(.display(.title3))
                     .foregroundStyle(Theme.ink)
                 Spacer()
                 Menu {
@@ -150,11 +150,11 @@ struct ListContent: View {
             }
             HStack {
                 Text("\(list.totalCount) items · \(list.doneCount) \(list.doneLabel.lowercased())")
-                    .font(.footnote)
+                    .font(.sans(.footnote))
                     .foregroundStyle(Theme.muted)
                 Spacer()
                 Text("\(list.remainingCount) to go")
-                    .font(.footnote.weight(.medium))
+                    .font(.sans(.footnote, .medium))
                     .foregroundStyle(Theme.forest)
             }
             ProgressView(value: list.progress)
@@ -192,7 +192,7 @@ struct ItemRow: View {
             Spacer()
             if !item.quantity.isEmpty {
                 Text(item.quantity)
-                    .font(.footnote)
+                    .font(.sans(.footnote))
                     .foregroundStyle(Theme.muted)
             }
         }

@@ -137,7 +137,7 @@ final class RestTimer {
     }
 }
 
-/// The bar at the bottom of a workout while you rest: time left, what's next, −15 / +15 / Skip.
+/// The dark green bar at the bottom of a workout while you rest: time left, what's next, −15 / +15 / Skip.
 struct RestBar: View {
     let timer: RestTimer
 
@@ -146,37 +146,41 @@ struct RestBar: View {
             TimelineView(.periodic(from: .now, by: 0.25)) { context in
                 let total = max(end.timeIntervalSince(start), 1)
                 let left = max(end.timeIntervalSince(context.date), 0)
-                VStack(spacing: 10) {
-                    HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("REST")
-                                .font(.caption2.weight(.semibold))
-                                .tracking(0.4)
-                                .foregroundStyle(Theme.onPrimary.opacity(0.8))
-                            Text(timer.next)
-                                .font(.subheadline)
-                                .foregroundStyle(Theme.onPrimary)
-                                .lineLimit(1)
-                        }
-                        Spacer()
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("REST")
+                            .font(.sans(.caption2, .bold))
+                            .tracking(0.6)
+                            .foregroundStyle(Theme.onHero.opacity(0.8))
                         Text(Duration.seconds(left.rounded(.up)).formatted(.time(pattern: .minuteSecond)))
-                            .font(.system(size: 34, weight: .semibold, design: .rounded))
+                            .font(.display(.largeTitle))
                             .monospacedDigit()
-                            .foregroundStyle(Theme.onPrimary)
+                            .foregroundStyle(Theme.onHero)
                             .contentTransition(.numericText(countsDown: true))
                             .animation(.snappy, value: Int(left.rounded(.up)))
+                        Text(timer.next)
+                            .font(.sans(.footnote))
+                            .foregroundStyle(Theme.onHero.opacity(0.85))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
-                    ProgressView(value: left, total: total)
-                        .tint(Theme.onPrimary)
-                    HStack(spacing: 10) {
-                        barButton("−15") { timer.add(-15) }
-                        barButton("+15") { timer.add(15) }
-                        Spacer()
-                        barButton("Skip") { withAnimation(.snappy) { timer.skip() } }
+                    Spacer(minLength: 4)
+                    roundButton("−15", fill: Theme.onHero.opacity(0.16), text: Theme.onHero) { timer.add(-15) }
+                    roundButton("+15", fill: Theme.onHero.opacity(0.16), text: Theme.onHero) { timer.add(15) }
+                    roundButton("Skip", fill: Theme.honey, text: Palette.ink) { withAnimation(.snappy) { timer.skip() } }
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                // The rest so far fills in, faintly, from the left.
+                .background(alignment: .leading) {
+                    GeometryReader { geo in
+                        Rectangle()
+                            .fill(Theme.onHero.opacity(0.06))
+                            .frame(width: geo.size.width * (1 - left / total))
                     }
                 }
-                .padding(16)
-                .background(Theme.forest, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .background(Theme.hero)
+                .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
                 .accessibilityElement(children: .contain)
@@ -186,13 +190,14 @@ struct RestBar: View {
         }
     }
 
-    private func barButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(title, action: action)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Theme.forest)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            .background(Theme.onPrimary, in: Capsule())
-            .buttonStyle(.plain)
+    private func roundButton(_ title: String, fill: Color, text: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.sans(.subheadline, .semibold))
+                .foregroundStyle(text)
+                .frame(width: 54, height: 54)
+                .background(fill, in: Circle())
+        }
+        .buttonStyle(.plain)
     }
 }

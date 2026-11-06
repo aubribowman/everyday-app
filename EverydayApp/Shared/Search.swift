@@ -189,7 +189,7 @@ private struct ResultRow: View {
                     .strikethrough(isDone)
                 if !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(.footnote)
+                        .font(.sans(.footnote))
                         .foregroundStyle(Theme.muted)
                 }
             }

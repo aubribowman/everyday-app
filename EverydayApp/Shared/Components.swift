@@ -18,7 +18,7 @@ struct CheckBox: View {
             .overlay {
                 if isOn {
                     Image(systemName: "checkmark")
-                        .font(.caption.weight(.bold))
+                        .font(.sans(.caption, .bold))
                         .foregroundStyle(Theme.onPrimary)
                 }
             }
@@ -94,12 +94,12 @@ struct SectionHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
-                .font(.title3.weight(.semibold))
+                .font(.display(.title3))
                 .foregroundStyle(Theme.ink)
             Spacer()
             if let action {
                 Button(action, action: onTap)
-                    .font(.footnote.weight(.medium))
+                    .font(.sans(.footnote, .medium))
                     .foregroundStyle(Theme.forest)
                     .buttonStyle(.plain)
             }
@@ -121,16 +121,16 @@ struct DetailRow: View {
                 .frame(width: 38, height: 38)
                 .background(Theme.background, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
-                Text(label).font(.caption).foregroundStyle(Theme.muted)
-                Text(value).font(.body.weight(.medium)).foregroundStyle(Theme.ink)
+                Text(label).font(.sans(.caption)).foregroundStyle(Theme.muted)
+                Text(value).font(.sans(.body, .medium)).foregroundStyle(Theme.ink)
                 if let detail {
-                    Text(detail).font(.caption).foregroundStyle(Theme.muted)
+                    Text(detail).font(.sans(.caption)).foregroundStyle(Theme.muted)
                 }
             }
             .multilineTextAlignment(.leading)
             Spacer(minLength: 8)
             Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
+                .font(.sans(.footnote, .semibold))
                 .foregroundStyle(Theme.muted)
         }
         .padding(.vertical, 14)
@@ -176,10 +176,10 @@ struct TaskRow: View {
                                 Text(task.detailLine)
                                 // A small ↻ marks tasks that repeat.
                                 if task.repeats {
-                                    Image(systemName: "repeat").font(.caption2)
+                                    Image(systemName: "repeat").font(.sans(.caption2))
                                 }
                             }
-                            .font(.footnote)
+                            .font(.sans(.footnote))
                             .foregroundStyle(Theme.muted)
                         }
                     }
@@ -245,9 +245,9 @@ struct SectionPicker: View {
                 Text(selection.isEmpty ? "No section" : selection)
                     .lineLimit(1)
                 Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption2)
+                    .font(.sans(.caption2))
             }
-            .font(.footnote.weight(.medium))
+            .font(.sans(.footnote, .medium))
             .foregroundStyle(Theme.forest)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)

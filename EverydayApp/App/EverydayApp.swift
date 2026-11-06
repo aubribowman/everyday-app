@@ -25,6 +25,7 @@ struct EverydayApp: App {
             fatalError("Couldn't open the app's data: \(error)")
         }
         Reminders.shared.container = container
+        AppFonts.register()   // Instrument Serif + Sans (see Theme.swift)
     }
 
     var body: some Scene {
@@ -33,6 +34,7 @@ struct EverydayApp: App {
             // and whenever it changes in Settings.
             ContentView()
                 .environment(calendarStore)
+                .font(.sans())   // Instrument Sans for any text without its own font
                 .onChange(of: appearance, initial: true) { _, setting in setting.apply() }
         }
         .modelContainer(container)

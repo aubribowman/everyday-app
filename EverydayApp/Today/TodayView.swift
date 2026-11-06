@@ -106,10 +106,17 @@ struct TodayView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 6) {
                 Label(Theme.appName, systemImage: "leaf")
-                    .font(.subheadline.weight(.medium))
+                    .font(.sans(.subheadline, .medium))
                     .foregroundStyle(Theme.forest)
-                Text(firstName.isEmpty ? greeting : "\(greeting), \(firstName)")
-                    .font(.largeTitle.weight(.semibold))
+                // Your first name is set in Instrument Serif italic, in terracotta.
+                Group {
+                    if firstName.isEmpty {
+                        Text(greeting)
+                    } else {
+                        Text("\(greeting), \(Text(firstName).font(.display(.largeTitle, italic: true)).foregroundStyle(Theme.terracotta))")
+                    }
+                }
+                    .font(.display(.largeTitle))
                     .tracking(-0.5)
                     .foregroundStyle(Theme.ink)
             }
@@ -130,22 +137,22 @@ struct TodayView: View {
     private var hero: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day()).uppercased())
-                .font(.caption.weight(.semibold))
+                .font(.sans(.caption, .semibold))
                 .tracking(0.4)
-                .foregroundStyle(Theme.forest)
-            Text("A little space for today.")
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(Theme.ink)
+                .foregroundStyle(Theme.honey)
+            Text("A little space for \(Text("today").font(.display(.title, italic: true))).")
+                .font(.display(.title))
+                .foregroundStyle(Theme.onHero)
             Text(summaryLine)
-                .font(.subheadline)
-                .foregroundStyle(Theme.forest)
+                .font(.sans(.subheadline))
+                .foregroundStyle(Theme.onHero.opacity(0.8))
             HStack(spacing: 10) {
                 ProgressView(value: todayTasks.isEmpty ? 0 : Double(doneCount) / Double(todayTasks.count))
-                    .tint(Theme.forest)
+                    .tint(Theme.honey)
                     .frame(width: 110)
                 Text("\(doneCount) of \(todayTasks.count) complete")
-                    .font(.caption)
-                    .foregroundStyle(Theme.forest)
+                    .font(.sans(.caption))
+                    .foregroundStyle(Theme.onHero.opacity(0.8))
             }
             .padding(.top, 6)
         }
@@ -153,13 +160,15 @@ struct TodayView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
         .background(alignment: .topTrailing) {
+            // A big leaf peeking in from the corner, like a monstera by the window.
             Image(systemName: "leaf.fill")
-                .font(.system(size: 72))
-                .foregroundStyle(Theme.forest.opacity(0.18))
-                .rotationEffect(.degrees(-25))
-                .padding(18)
+                .font(.system(size: 120))
+                .foregroundStyle(Theme.onHero.opacity(0.12))
+                .rotationEffect(.degrees(-30))
+                .offset(x: 26, y: -18)
         }
-        .background(Theme.sage, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(Theme.hero, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
     }
 
     private var comingUp: some View {
@@ -170,7 +179,7 @@ struct TodayView: View {
                 CalendarStatusCard()
             } else if upcomingEvents.isEmpty {
                 Text("Nothing else on your calendar today.")
-                    .font(.subheadline)
+                    .font(.sans(.subheadline))
                     .foregroundStyle(Theme.muted)
             } else {
                 VStack(spacing: 12) {
@@ -192,7 +201,7 @@ struct TodayView: View {
             SectionHeader(title: "On your list", action: "See all") { tab = .tasks }
             if todayTasks.isEmpty {
                 Text("Nothing scheduled today. Tap + to add a task.")
-                    .font(.subheadline)
+                    .font(.sans(.subheadline))
                     .foregroundStyle(Theme.muted)
                     .padding(.vertical, 12)
             } else {
@@ -222,7 +231,7 @@ struct TodayView: View {
                         CoverImage(url: item.cover, kind: item.kindValue, width: 36)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.statusValue.label(for: item.kindValue).uppercased())
-                                .font(.caption2.weight(.semibold))
+                                .font(.sans(.caption2, .semibold))
                                 .tracking(0.4)
                                 .foregroundStyle(Theme.forest)
                             Text(item.title)
@@ -230,14 +239,14 @@ struct TodayView: View {
                                 .lineLimit(1)
                             if !item.creator.isEmpty {
                                 Text(item.creator)
-                                    .font(.footnote)
+                                    .font(.sans(.footnote))
                                     .foregroundStyle(Theme.muted)
                                     .lineLimit(1)
                             }
                         }
                         Spacer(minLength: 8)
                         Image(systemName: "chevron.right")
-                            .font(.footnote.weight(.semibold))
+                            .font(.sans(.footnote, .semibold))
                             .foregroundStyle(Theme.muted)
                     }
                     .padding(.vertical, 10)
@@ -251,7 +260,7 @@ struct TodayView: View {
     private var footer: some View {
         HStack {
             Text("One thing at a time. You're doing well.")
-                .font(.footnote)
+                .font(.sans(.footnote))
                 .foregroundStyle(Theme.muted)
             Spacer()
             // + opens a menu: a task, a reminder (task with a time + notification), or a calendar event.

@@ -1,4 +1,4 @@
-// The habit screens: the tiles on Today, the full Habits screen, and the
+// The habit screens: the plant shelf card on Today (pots are in PlantShelf.swift), the full Habits screen, and the
 // add/edit sheet. Also FlowLayout, which wraps views onto new lines.
 
 import SwiftUI
@@ -16,7 +16,8 @@ extension View {
 
 // MARK: Today card
 
-/// Today's habits as tiles. Tap one to check it in; long-press for more.
+/// Today's habits as a shelf of potted plants. Tap a plant to check in;
+/// long-press for more. Scrolls sideways when there are more than three.
 struct HabitsCard: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Habit.order) private var habits: [Habit]
@@ -25,65 +26,85 @@ struct HabitsCard: View {
 
     let onManage: () -> Void
 
-    private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
     private var doneCount: Int { habits.filter(\.isDoneToday).count }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Habits", action: habits.isEmpty ? nil : "All habits", onTap: onManage)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                Text("Plant \(Text("shelf").font(.display(.title3, italic: true)))")
+                    .font(.display(.title3))
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+                if !habits.isEmpty {
+                    // "1 of 3 watered". Tap it to see every habit.
+                    Button(action: onManage) {
+                        Text(doneCount == habits.count ? "All watered" : "\(doneCount) of \(habits.count) watered")
+                            .font(.sans(.caption, .semibold))
+                            .foregroundStyle(Theme.forest)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 5)
+                            .background(Theme.surface, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens all habits")
+                }
+            }
 
             if habits.isEmpty {
                 ideas
             } else {
-                LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(habits) { habit in
-                        HabitTile(habit: habit)
-                            .contextMenu {
-                                if habit.target > 1 && !habit.isDoneToday {
-                                    Button("Mark all done", systemImage: "checkmark.circle") {
-                                        while !habit.isDoneToday { habit.addOne(in: context) }
+                VStack(spacing: 0) {
+                    ScrollView(.horizontal) {
+                        HStack(alignment: .bottom, spacing: 8) {
+                            ForEach(habits) { habit in
+                                PlantPot(habit: habit)
+                                    .containerRelativeFrame(.horizontal, count: 3, spacing: 8)
+                                    .contextMenu {
+                                        if habit.target > 1 && !habit.isDoneToday {
+                                            Button("Mark all done", systemImage: "checkmark.circle") {
+                                                while !habit.isDoneToday { habit.addOne(in: context) }
+                                            }
+                                        }
+                                        if habit.countToday > 0 {
+                                            Button("Take one back", systemImage: "arrow.uturn.backward") {
+                                                habit.removeOne(in: context)
+                                            }
+                                        }
+                                        Button("Edit", systemImage: "pencil") { editing = habit }
                                     }
-                                }
-                                if habit.countToday > 0 {
-                                    Button("Take one back", systemImage: "arrow.uturn.backward") {
-                                        habit.removeOne(in: context)
-                                    }
-                                }
-                                Button("Edit", systemImage: "pencil") { editing = habit }
                             }
+                            EmptyPot { adding = true }
+                                .containerRelativeFrame(.horizontal, count: 3, spacing: 8)
+                        }
                     }
-                    addTile
+                    .scrollIndicators(.hidden)
+                    .scrollDisabled(habits.count < 3)
+
+                    // The wooden shelf the pots sit on.
+                    Capsule()
+                        .fill(PlantColors.shelf)
+                        .frame(height: 8)
+                        .padding(.horizontal, 2)
+                        .padding(.top, 8)
                 }
-                Text(doneCount == habits.count
-                     ? "All done today. Lovely."
-                     : "\(doneCount) of \(habits.count) done today")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.muted)
+
+                Button("All habits", action: onManage)
+                    .font(.sans(.footnote, .medium))
+                    .foregroundStyle(Theme.forest)
+                    .buttonStyle(.plain)
             }
         }
+        .padding(16)
+        .background(Theme.sage, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
         .sheet(isPresented: $adding) { HabitSheet(order: habits.count) }
         .sheet(item: $editing) { HabitSheet(editing: $0) }
-    }
-
-    /// The last tile: opens the new-habit sheet.
-    private var addTile: some View {
-        Button { adding = true } label: {
-            Label("Add habit", systemImage: "plus")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Theme.forest)
-                .frame(maxWidth: .infinity, minHeight: 68)
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Theme.hairline, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
-                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-        .buttonStyle(.plain)
     }
 
     /// No habits yet: a few ideas you can add with one tap.
     private var ideas: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Small things you want to do every day. Tap an idea to add it.")
-                .font(.subheadline)
+                .font(.sans(.subheadline))
                 .foregroundStyle(Theme.muted)
             FlowLayout(spacing: 8) {
                 ForEach(HabitIdeas.all) { idea in
@@ -97,7 +118,7 @@ struct HabitsCard: View {
                 }
                 Button { adding = true } label: {
                     Label("Your own", systemImage: "plus")
-                        .font(.footnote.weight(.medium))
+                        .font(.sans(.footnote, .medium))
                         .foregroundStyle(Theme.forest)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
@@ -109,110 +130,48 @@ struct HabitsCard: View {
     }
 }
 
-/// One habit: a ring that fills as you go, its name, today's progress and your streak.
-struct HabitTile: View {
-    @Environment(\.modelContext) private var context
-    let habit: Habit
-
-    var body: some View {
-        let tint = habit.tintValue
-        Button {
-            withAnimation(.snappy) { habit.tap(in: context) }
-        } label: {
-            HStack(spacing: 10) {
-                HabitRing(habit: habit, size: 40)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(habit.name)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.ink)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                    HStack(spacing: 6) {
-                        Text(habit.progressLine)
-                        if habit.streak > 0 {
-                            Text("\(Image(systemName: "flame.fill")) \(habit.streak)")
-                                .accessibilityLabel("\(habit.streak) day streak")
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(tint.ink)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
-            .background(tint.fill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .sensoryFeedback(.success, trigger: habit.isDoneToday) { _, done in done }
-        .sensoryFeedback(.increase, trigger: habit.countToday)
-        .accessibilityHint(habit.isDoneToday ? "Double-tap to take one back" : "Double-tap to check in")
-    }
-}
-
-/// The habit's icon inside a ring that fills up (all the way once done).
-struct HabitRing: View {
-    let habit: Habit
-    var size: CGFloat = 40
-
-    var body: some View {
-        let tint = habit.tintValue
-        let progress = min(Double(habit.countToday) / Double(max(habit.target, 1)), 1)
-        ZStack {
-            Circle().stroke(tint.ink.opacity(0.18), lineWidth: 3)
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(tint.ink, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            if habit.isDoneToday {
-                Circle().fill(tint.ink).padding(5)
-                Image(systemName: "checkmark")
-                    .font(.system(size: size * 0.36, weight: .bold))
-                    .foregroundStyle(tint.fill)
-                    .transition(.scale.combined(with: .opacity))
-            } else {
-                Image(systemName: habit.icon)
-                    .font(.system(size: size * 0.4))
-                    .foregroundStyle(tint.ink)
-            }
-        }
-        .frame(width: size, height: size)
-    }
-}
-
 // MARK: All habits
 
-/// Every habit with its last 7 days and streaks. Add, edit and delete here.
+/// Your garden: every habit as a plant with its streaks and last 7 days,
+/// a key to the growth stages, and ideas ("seeds") you can add with one tap.
 struct HabitsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Habit.order) private var habits: [Habit]
     @State private var adding = false
     @State private var editing: Habit?
 
+    /// Ideas you haven't added yet.
+    private var seeds: [HabitIdeas.Idea] {
+        let names = Set(habits.map { $0.name.lowercased() })
+        return HabitIdeas.all.filter { !names.contains($0.name.lowercased()) }
+    }
+
+    /// "3 habits · 1 in bloom today"
+    private var summary: String {
+        let bloomed = habits.filter(\.isDoneToday).count
+        return "\(habits.count) \(habits.count == 1 ? "habit" : "habits") · \(bloomed) in bloom today"
+    }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Habits")
-                            .font(.largeTitle.weight(.semibold))
-                            .tracking(-0.5)
-                            .foregroundStyle(Theme.ink)
-                        Text("Small things, every day.")
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.muted)
-                    }
-                    Spacer()
-                    Button { adding = true } label: { AddButtonLabel() }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("New habit")
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Your \(Text("garden").font(.display(.largeTitle, italic: true)).foregroundStyle(Theme.terracotta))")
+                        .font(.display(.largeTitle))
+                        .tracking(-0.5)
+                        .foregroundStyle(Theme.ink)
+                    Text(habits.isEmpty ? "Small things, every day." : summary)
+                        .font(.sans(.subheadline))
+                        .foregroundStyle(Theme.muted)
                 }
 
+                stageKey
+
                 if habits.isEmpty {
-                    ContentUnavailableView("No habits yet", systemImage: "leaf",
-                                           description: Text("Tap + to add something you want to do every day."))
-                        .padding(.top, 30)
+                    Text("Nothing planted yet. Tap + or pick a seed below.")
+                        .font(.sans(.subheadline))
+                        .foregroundStyle(Theme.muted)
+                        .padding(.vertical, 8)
                 } else {
                     VStack(spacing: 12) {
                         ForEach(habits) { habit in
@@ -228,19 +187,94 @@ struct HabitsView: View {
                                         context.delete(habit)
                                     }
                                 }
+                                .accessibilityHint("Opens the habit. Long-press to move or delete it.")
                         }
                     }
-                    Text("Tap a habit to edit it. Long-press to move or delete it.")
-                        .font(.footnote)
-                        .foregroundStyle(Theme.muted)
+                    // Labels the bars: oldest day on the left, today on the right.
+                    HStack {
+                        Text(Date.now.addingTimeInterval(-6 * 86_400).formatted(.dateTime.weekday(.abbreviated)))
+                        Spacer()
+                        Text("Today")
+                    }
+                    .font(.sans(.caption))
+                    .foregroundStyle(Theme.muted)
+                    .padding(.leading, HabitWeekCard.barInset)
+                    .padding(.trailing, 16)
+                    .accessibilityHidden(true)
                 }
+
+                if !seeds.isEmpty { seedChips }
             }
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
         }
         .background(Theme.background)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { adding = true } label: { AddButtonLabel() }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("New habit")
+            }
+            .sharedBackgroundVisibility(.hidden)   // just the green circle, no glass ring
+        }
         .sheet(isPresented: $adding) { HabitSheet(order: habits.count) }
         .sheet(item: $editing) { HabitSheet(editing: $0) }
+    }
+
+    /// The four growth stages: Seed, Sprout, Leafy, Bloom.
+    private var stageKey: some View {
+        HStack(alignment: .bottom, spacing: 0) {
+            ForEach(PlantStage.allCases, id: \.self) { stage in
+                VStack(spacing: 2) {
+                    PlantDrawing(stage: stage)
+                        .frame(width: 40, height: 42)
+                    Text(stage.name)
+                        .font(.sans(.footnote, .semibold))
+                        .foregroundStyle(Theme.ink)
+                    Text(stage.meaning)
+                        .font(.sans(.caption))
+                        .foregroundStyle(Theme.muted)
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(stage.name): \(stage.meaning)")
+            }
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 8)
+        .background(Theme.sage, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    /// "Seeds to plant": ideas you haven't added. Tap one to add it.
+    private var seedChips: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Seeds to \(Text("plant").font(.display(.title3, italic: true)))")
+                .font(.display(.title3))
+                .foregroundStyle(Theme.ink)
+                .padding(.top, 8)
+            FlowLayout(spacing: 8) {
+                ForEach(seeds) { idea in
+                    Button {
+                        withAnimation(.snappy) {
+                            context.insert(Habit(name: idea.name, icon: idea.icon, tint: idea.tint,
+                                                 target: idea.target, order: habits.count))
+                        }
+                    } label: {
+                        Label(idea.name, systemImage: "plus")
+                            .font(.sans(.subheadline, .semibold))
+                            .foregroundStyle(Theme.ink)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .overlay(Capsule().strokeBorder(Theme.muted.opacity(0.5),
+                                                            style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add \(idea.name)")
+                }
+            }
+        }
     }
 
     /// Swaps a habit with its neighbor, then renumbers them all.
@@ -255,63 +289,76 @@ struct HabitsView: View {
     }
 }
 
-/// A habit on the Habits screen: today's ring, streaks and a dot for each of the last 7 days.
+/// A habit on the Habits screen: its plant, streaks, today's status and a bar for each of the last 7 days.
 struct HabitWeekCard: View {
     let habit: Habit
 
+    static let plantSize: CGFloat = 64
+    /// Where the bars start, so the "Fri … Today" labels can line up with them.
+    static let barInset: CGFloat = 16 + plantSize + 14
+
     var body: some View {
-        let tint = habit.tintValue
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
-                HabitRing(habit: habit, size: 44)
-                VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 14) {
+            PlantDrawing(stage: PlantStage(habit))
+                .padding(4)
+                .frame(width: Self.plantSize, height: Self.plantSize)
+                .background(habit.tintValue.fill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
                     Text(habit.name)
-                        .font(.headline)
+                        .font(.sans(.headline))
                         .foregroundStyle(Theme.ink)
-                    Text(subtitle)
-                        .font(.footnote)
-                        .foregroundStyle(tint.ink)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Text(status.text)
+                        .font(.sans(.footnote, .semibold))
+                        .foregroundStyle(status.color)
                 }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
+                Text(subtitle)
+                    .font(.sans(.footnote))
                     .foregroundStyle(Theme.muted)
-            }
-            HStack(spacing: 0) {
-                ForEach(habit.lastWeek, id: \.day) { entry in
-                    VStack(spacing: 6) {
-                        Circle()
-                            .fill(entry.done ? tint.ink : tint.ink.opacity(0.15))
-                            .frame(width: 22, height: 22)
-                            .overlay {
-                                if entry.done {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(tint.fill)
-                                }
-                            }
-                        Text(entry.day.formatted(.dateTime.weekday(.narrow)))
-                            .font(.caption2.weight(Calendar.current.isDateInToday(entry.day) ? .bold : .regular))
-                            .foregroundStyle(Theme.ink.opacity(0.7))
+                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    ForEach(habit.lastWeek, id: \.day) { entry in
+                        Capsule()
+                            .fill(barColor(entry))
+                            .frame(height: 7)
                     }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(entry.day.formatted(.dateTime.weekday(.wide))), \(entry.done ? "done" : "not done")")
                 }
+                .padding(.top, 4)
             }
         }
         .padding(16)
-        .background(tint.fill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.hairline))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(habit.name), \(status.text). \(subtitle). Done \(habit.lastWeek.filter(\.done).count) of the last 7 days.")
     }
 
-    /// "3 of 8 today · 5-day streak · best 12 · reminder 9:00 AM"
+    /// "In bloom", "3 of 8" or "Seed".
+    private var status: (text: String, color: Color) {
+        if habit.isDoneToday { return ("In bloom", Theme.terracotta) }
+        if habit.countToday > 0 { return ("\(habit.countToday) of \(habit.target)", Theme.ink) }
+        return ("Seed", Theme.lavenderInk)
+    }
+
+    /// "5-day streak · best 12 · 9:00 AM" or "Streak ended · best 6"
     private var subtitle: String {
-        var parts = [habit.target > 1 ? "\(min(habit.countToday, habit.target)) of \(habit.target) today"
-                                      : (habit.isDoneToday ? "Done today" : "Not yet today")]
+        var parts: [String] = []
         if habit.streak > 0 { parts.append("\(habit.streak)-day streak") }
+        else if habit.bestStreak > 0 { parts.append("Streak ended") }
+        else { parts.append("Just planted") }
         if habit.bestStreak > habit.streak { parts.append("best \(habit.bestStreak)") }
-        if let time = habit.reminderLine { parts.append("reminder \(time)") }
+        if let time = habit.reminderLine { parts.append(time) }
         return parts.joined(separator: " · ")
+    }
+
+    /// Green for done days, terracotta once today is done, a lighter green for today in progress.
+    private func barColor(_ entry: (day: Date, done: Bool)) -> Color {
+        let isToday = Calendar.current.isDateInToday(entry.day)
+        if entry.done { return isToday ? Theme.terracotta : PlantColors.stem }
+        if isToday && habit.countToday > 0 { return PlantColors.stem.opacity(0.45) }
+        return Theme.sage
     }
 }
 
@@ -460,7 +507,7 @@ struct IdeaChip: View {
             Image(systemName: idea.icon)
             Text(idea.name)
         }
-        .font(.footnote.weight(.medium))
+        .font(.sans(.footnote, .medium))
         .foregroundStyle(idea.tint.ink)
         .lineLimit(1)
         .fixedSize()

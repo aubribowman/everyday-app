@@ -40,6 +40,8 @@ final class Habit {
 
     var countToday: Int { checkIn(on: .now)?.count ?? 0 }
     var isDoneToday: Bool { countToday >= target }
+    /// Today's progress from 0 to 1.
+    var progressToday: Double { min(Double(countToday) / Double(max(target, 1)), 1) }
 
     /// One more time today ("Drink water": 3 of 8 → 4 of 8).
     func addOne(in context: ModelContext) {

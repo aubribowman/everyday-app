@@ -40,11 +40,11 @@ struct GymView: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Gym")
-                            .font(.largeTitle.weight(.semibold))
+                            .font(.display(.largeTitle))
                             .tracking(-0.5)
                             .foregroundStyle(Theme.ink)
                         Text("Your routine, one day at a time.")
-                            .font(.subheadline)
+                            .font(.sans(.subheadline))
                             .foregroundStyle(Theme.muted)
                     }
                     Spacer()
@@ -79,7 +79,7 @@ struct GymView: View {
                         }
                     }
                     Text("Workouts take turns in this order. Long-press one to rename or delete it.")
-                        .font(.footnote)
+                        .font(.sans(.footnote))
                         .foregroundStyle(Theme.muted)
                 }
             }
@@ -107,30 +107,30 @@ struct GymView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     if weekdays.isEmpty {
                         Text("Pick your gym days")
-                            .font(.headline)
+                            .font(.sans(.headline))
                             .foregroundStyle(Theme.ink)
                         Text("Get a reminder with the workout that's up next.")
-                            .font(.footnote)
+                            .font(.sans(.footnote))
                             .foregroundStyle(Theme.muted)
                     } else {
                         Text(Gym.Schedule.summary(weekdays))
-                            .font(.headline)
+                            .font(.sans(.headline))
                             .foregroundStyle(Theme.ink)
                         if let upcoming {
                             Text("\(dayLabel(upcoming.date)): \(upcoming.day.name)")
-                                .font(.footnote)
+                                .font(.sans(.footnote))
                                 .foregroundStyle(Theme.muted)
                         }
                         if remind {
                             Label("Reminder at \(minutesText(remindMinutes))", systemImage: "bell")
-                                .font(.caption)
+                                .font(.sans(.caption))
                                 .foregroundStyle(Theme.forest)
                         }
                     }
                 }
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
+                    .font(.sans(.footnote, .semibold))
                     .foregroundStyle(Theme.muted)
             }
             .padding(14)
@@ -144,22 +144,22 @@ struct GymView: View {
     private func progressCard(_ highlights: [Gym.Highlight]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("PROGRESS")
-                .font(.caption.weight(.semibold))
+                .font(.sans(.caption, .semibold))
                 .tracking(0.4)
                 .foregroundStyle(Theme.forest)
             ForEach(highlights) { highlight in
                 HStack(spacing: 12) {
                     Image(systemName: highlight.kind == .best ? "trophy.fill" : "arrow.up.right")
-                        .font(.subheadline.weight(.semibold))
+                        .font(.sans(.subheadline, .semibold))
                         .foregroundStyle(highlight.kind == .best ? Theme.lemonInk : Theme.forest)
                         .frame(width: 32, height: 32)
                         .background(highlight.kind == .best ? Theme.lemon : Theme.sage, in: Circle())
                     VStack(alignment: .leading, spacing: 1) {
                         Text(highlight.exercise)
-                            .font(.subheadline.weight(.semibold))
+                            .font(.sans(.subheadline, .semibold))
                             .foregroundStyle(Theme.ink)
                         Text(highlight.detail)
-                            .font(.footnote)
+                            .font(.sans(.footnote))
                             .foregroundStyle(Theme.muted)
                     }
                 }
@@ -221,16 +221,16 @@ struct WorkoutDayCard: View {
                     tag("UP NEXT", systemImage: "arrow.right")
                 }
                 Text(day.name)
-                    .font(.headline)
+                    .font(.sans(.headline))
                     .foregroundStyle(Theme.ink)
                     .multilineTextAlignment(.leading)
                 Text(day.summary)
-                    .font(.footnote)
+                    .font(.sans(.footnote))
                     .foregroundStyle(Theme.muted)
             }
             Spacer(minLength: 8)
             Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
+                .font(.sans(.footnote, .semibold))
                 .foregroundStyle(Theme.muted)
         }
         .padding(14)
@@ -241,7 +241,7 @@ struct WorkoutDayCard: View {
 
     private func tag(_ text: String, systemImage: String) -> some View {
         Label(text, systemImage: systemImage)
-            .font(.caption2.weight(.semibold))
+            .font(.sans(.caption2, .semibold))
             .tracking(0.4)
             .foregroundStyle(Theme.forest)
     }
@@ -265,62 +265,107 @@ struct WorkoutDayView: View {
 
     private var exercises: [Exercise] { day.sortedExercises }
     private var doneCount: Int { exercises.filter(\.isDoneToday).count }
+    private var totalSets: Int { exercises.reduce(0) { $0 + $1.sets } }
+    private var setsDone: Int { exercises.reduce(0) { $0 + min($1.setsDoneToday, $1.sets) } }
+    /// The first exercise not finished yet; its card gets an outline and "Up next".
+    private var upNext: Exercise? { exercises.first { !$0.isDoneToday } }
+
+    /// The workout name in the serif, with the word "Day" (as in "Leg x Glutes Day") in terracotta italic.
+    private var title: Text {
+        let words = day.name.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
+        var result = Text("")
+        for (index, word) in words.enumerated() {
+            let piece = word.lowercased() == "day"
+                ? Text(word).font(.display(.largeTitle, italic: true)).foregroundStyle(Theme.terracotta)
+                : Text(word)
+            result = Text("\(result)\(index > 0 ? " " : "")\(piece)")
+        }
+        return result
+    }
 
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(day.name)
-                        .font(.title2.weight(.semibold))
+                VStack(alignment: .leading, spacing: 12) {
+                    title
+                        .font(.display(.largeTitle))
+                        .tracking(-0.5)
                         .foregroundStyle(Theme.ink)
-                    Text(day.summary)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.muted)
-                    if !exercises.isEmpty {
-                        HStack(spacing: 10) {
-                            ProgressView(value: Double(doneCount), total: Double(exercises.count))
-                                .tint(Theme.forest)
-                                .frame(width: 110)
-                            Text("\(doneCount) of \(exercises.count) done")
-                                .font(.caption)
-                                .foregroundStyle(Theme.forest)
+                    if exercises.isEmpty {
+                        Text(day.summary)
+                            .font(.sans(.subheadline))
+                            .foregroundStyle(Theme.muted)
+                    } else {
+                        // A thick bar for sets done, then "5 of 15 sets".
+                        HStack(spacing: 12) {
+                            GeometryReader { geo in
+                                Capsule().fill(Theme.sage)
+                                    .overlay(alignment: .leading) {
+                                        Capsule().fill(Theme.forest)
+                                            .frame(width: geo.size.width * Double(setsDone) / Double(max(totalSets, 1)))
+                                    }
+                            }
+                            .frame(height: 8)
+                            Text("\(setsDone) of \(totalSets) sets")
+                                .font(.sans(.footnote, .semibold))
+                                .foregroundStyle(Theme.muted)
+                                .monospacedDigit()
                         }
-                        .padding(.top, 2)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(setsDone) of \(totalSets) sets done")
                     }
                 }
                 .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4))
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
             }
 
             Section {
                 ForEach(exercises) { exercise in
                     ExerciseRow(exercise: exercise,
+                                isUpNext: exercise == upNext && doneCount + setsDone > 0,
                                 onEdit: { editingExercise = exercise },
                                 onSetFinished: {
                                     noteStart()
                                     startRest(after: exercise)
                                 })
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
                 }
                 .onDelete { offsets in
                     for index in offsets { context.delete(exercises[index]) }
                 }
                 .onMove(perform: move)
 
-                Button("Add exercise", systemImage: "plus") { addingExercise = true }
-                    .foregroundStyle(Theme.forest)
+                Button { addingExercise = true } label: {
+                    Label("Add exercise", systemImage: "plus")
+                        .font(.sans(.subheadline, .semibold))
+                        .foregroundStyle(Theme.forest)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(Theme.muted.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [4, 4])))
+                        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
             } footer: {
-                Text("Tap the next set when you finish it to start your rest. Got fewer reps? Tap the set again to change it. Tap a name to edit it or see your history.")
+                Text("Tap a set when you finish it to start your rest. Tap it again if you got fewer reps. Tap a name to edit it or see your history.")
+                    .font(.sans(.footnote))
+                    .padding(.top, 4)
             }
 
             if day.isFinishedToday {
                 Section {
                     VStack(spacing: 6) {
                         Label("Finished today. Nice work!", systemImage: "checkmark.seal.fill")
-                            .font(.headline)
+                            .font(.sans(.headline))
                             .foregroundStyle(Theme.forest)
                         if let healthNote {
                             Label(healthNote, systemImage: "heart.fill")
-                                .font(.footnote)
+                                .font(.sans(.footnote))
                                 .foregroundStyle(Theme.muted)
                         }
                     }
@@ -333,7 +378,7 @@ struct WorkoutDayView: View {
                         finish()
                     } label: {
                         Label("Finish workout", systemImage: "flag.checkered")
-                            .font(.headline)
+                            .font(.sans(.headline))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 6)
                     }
@@ -348,6 +393,8 @@ struct WorkoutDayView: View {
         .environment(\.editMode, $editMode)
         .safeAreaInset(edge: .bottom) { RestBar(timer: timer) }
         .animation(.snappy, value: timer.end)
+        .listStyle(.plain)
+        .contentMargins(.horizontal, 20, for: .scrollContent)
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .tint(Theme.forest)
@@ -373,9 +420,11 @@ struct WorkoutDayView: View {
                             withAnimation { editMode = .active }
                         }
                     } label: {
-                        Image(systemName: "ellipsis")
+                        Text("Edit")
+                            .font(.sans(.subheadline, .semibold))
+                            .foregroundStyle(Theme.ink)
                     }
-                    .accessibilityLabel("More")
+                    .accessibilityLabel("Edit workout")
                 }
             }
         }
@@ -445,40 +494,56 @@ struct WorkoutDayView: View {
     }
 }
 
-/// Name, "3 × 12 · 80 lbs", and a button for each set. Tap the next set when you finish it;
-/// tap a finished set to say you got fewer reps.
+/// One exercise as a card: name, "80 lbs · 3 × 12", and a pill for each set.
+/// Tap a set when you finish it; tap a finished set to say you got fewer reps.
+/// Done exercises turn sage; the next one gets a dark outline and "Up next".
 private struct ExerciseRow: View {
     @Environment(\.modelContext) private var context
     let exercise: Exercise
+    var isUpNext = false
     let onEdit: () -> Void
     let onSetFinished: () -> Void
 
     private var done: Int { exercise.setsDoneToday }
+    private let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(exercise.name)
-                        .foregroundStyle(exercise.isDoneToday ? Theme.muted : Theme.ink)
-                        .strikethrough(exercise.isDoneToday, color: Theme.muted)
+                        .font(.sans(.headline))
+                        .foregroundStyle(Theme.ink)
                     Text(exercise.planLine)
-                        .font(.footnote)
+                        .font(.sans(.footnote))
                         .foregroundStyle(Theme.muted)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onEdit)
 
-                SetButtons(exercise: exercise, onSetFinished: onSetFinished)
+                if exercise.isNewBestToday {
+                    badge("Best!", systemImage: "star.fill")
+                } else if let change = recentChange {
+                    badge(change, systemImage: nil)
+                } else if isUpNext {
+                    Text("Up next")
+                        .font(.sans(.footnote, .semibold))
+                        .foregroundStyle(Theme.ink)
+                }
             }
-            Spacer(minLength: 8)
-            if exercise.isNewBestToday {
-                badge("Best!", systemImage: "trophy.fill")
-            } else if let change = recentChange {
-                badge(change, systemImage: nil)
+            SetButtons(exercise: exercise, onSetFinished: onSetFinished)
+        }
+        .padding(16)
+        .background(exercise.isDoneToday ? Theme.sage : Theme.surface, in: shape)
+        .overlay {
+            if isUpNext {
+                shape.stroke(Theme.forest, lineWidth: 1.5)
+            } else if !exercise.isDoneToday {
+                shape.stroke(Theme.hairline, lineWidth: 1)
             }
         }
-        .padding(.vertical, 4)
+        .contentShape(.contextMenuPreview, shape)
         .contextMenu {
             if !exercise.isDoneToday {
                 Button("Finish all sets", systemImage: "checkmark.circle") {
@@ -507,11 +572,11 @@ private struct ExerciseRow: View {
             if let systemImage { Image(systemName: systemImage) }
             Text(text)
         }
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(Theme.forest)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Theme.sage, in: Capsule())
+        .font(.sans(.caption, .semibold))
+        .foregroundStyle(Palette.ink)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Theme.honey, in: Capsule())
     }
 }
 
@@ -524,7 +589,7 @@ private struct SetButtons: View {
 
     var body: some View {
         let got = exercise.repsToday
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             ForEach(0..<exercise.sets, id: \.self) { index in
                 if index < got.count {
                     finishedSet(index, reps: got[index])
@@ -535,7 +600,7 @@ private struct SetButtons: View {
                             onSetFinished()
                         }
                     } label: {
-                        pill(index == got.count ? amount(exercise.reps) : "", filled: false, short: false)
+                        pill(amount(exercise.reps), filled: false, short: false)
                     }
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Finish set \(got.count + 1) of \(exercise.sets)")
@@ -582,16 +647,16 @@ private struct SetButtons: View {
     /// One set's pill. Filled = done. `short` (fewer reps than planned) draws it in peach.
     private func pill(_ text: String, filled: Bool, short: Bool) -> some View {
         Text(text.isEmpty ? " " : text)
-            .font(.subheadline.weight(.semibold))
+            .font(.sans(.subheadline, .semibold))
             .monospacedDigit()
             .foregroundStyle(filled ? (short ? Theme.peachInk : Theme.onPrimary) : Theme.muted)
-            .frame(minWidth: 44, minHeight: 30)
-            .padding(.horizontal, 4)
+            .frame(minWidth: 52, minHeight: 36)
+            .padding(.horizontal, 2)
             .background {
                 if filled {
                     Capsule().fill(short ? Theme.peach : Theme.forest)
                 } else {
-                    Capsule().strokeBorder(Theme.muted.opacity(0.45), lineWidth: 1.5)
+                    Capsule().strokeBorder(Theme.muted.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
                 }
             }
             .contentShape(Capsule())
@@ -620,13 +685,13 @@ struct NextTimeSheet: View {
                                 Text(exercise.name).foregroundStyle(Theme.ink)
                                 Spacer()
                                 Text(nextWeight(exercise))
-                                    .font(.subheadline.weight(.semibold))
+                                    .font(.sans(.subheadline, .semibold))
                                     .foregroundStyle(Theme.forest)
                                     .contentTransition(.numericText())
                             }
                             if exercise.missedRepsToday {
                                 Text("Got \(exercise.repsToday.map(String.init).joined(separator: " · ")) of \(exercise.reps). Stay here until you get them all.")
-                                    .font(.footnote)
+                                    .font(.sans(.footnote))
                                     .foregroundStyle(Theme.peachInk)
                             }
                             Picker("Change", selection: binding(for: exercise)) {
@@ -799,7 +864,7 @@ struct ExerciseSheet: View {
             }
             if let best = exercise.personalBest, let weight = best.weight {
                 Label("Best: \(Exercise.pounds(weight)) on \(Gym.shortDate(best.date))", systemImage: "trophy.fill")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.sans(.subheadline, .semibold))
                     .foregroundStyle(Theme.forest)
             }
             ForEach(logs.prefix(8)) { log in
@@ -810,7 +875,7 @@ struct ExerciseSheet: View {
                             .compactMap { $0 }.joined(separator: " · "))
                         .foregroundStyle(log.hitAllReps ? Theme.muted : Theme.peachInk)
                 }
-                .font(.subheadline)
+                .font(.sans(.subheadline))
             }
         }
     }
@@ -894,7 +959,7 @@ struct ImportRoutineSheet: View {
                     .tint(Theme.forest)
                     TextEditor(text: $text)
                         .frame(height: 180)   // scrolls inside, so what it found stays in view
-                        .font(.callout)
+                        .font(.sans(.callout))
                 } header: {
                     Text("Your routine")
                 } footer: {
@@ -906,10 +971,10 @@ struct ImportRoutineSheet: View {
                         ForEach(Array(parsed.enumerated()), id: \.offset) { _, day in
                             VStack(alignment: .leading, spacing: 4) {
                                 Label(day.name, systemImage: WorkoutDay.icon(for: day.name))
-                                    .font(.headline)
+                                    .font(.sans(.headline))
                                     .foregroundStyle(Theme.ink)
                                 Text(day.exercises.map(\.name).joined(separator: ", "))
-                                    .font(.footnote)
+                                    .font(.sans(.footnote))
                                     .foregroundStyle(Theme.muted)
                             }
                             .padding(.vertical, 2)
@@ -918,7 +983,7 @@ struct ImportRoutineSheet: View {
                 } else if !text.isEmpty {
                     Section {
                         Text("Couldn't find any exercises. Each one needs a number (like \"1.\") or sets × reps (like \"3x12\").")
-                            .font(.footnote)
+                            .font(.sans(.footnote))
                             .foregroundStyle(Theme.muted)
                     }
                 }
@@ -1013,7 +1078,7 @@ struct GymScheduleSheet: View {
                                 Text(item.day.name)
                                     .foregroundStyle(Theme.ink)
                             }
-                            .font(.subheadline)
+                            .font(.sans(.subheadline))
                         }
                     }
                 }
@@ -1043,7 +1108,7 @@ struct GymScheduleSheet: View {
             withAnimation(.snappy) { gymDays = Gym.Schedule.text(updated) }
         } label: {
             Text(name)
-                .font(.subheadline.weight(.semibold))
+                .font(.sans(.subheadline, .semibold))
                 .foregroundStyle(on ? Theme.onPrimary : Theme.ink)
                 .frame(maxWidth: .infinity, minHeight: 40)
                 .background(on ? Theme.forest : Theme.sage.opacity(0.6), in: Circle())

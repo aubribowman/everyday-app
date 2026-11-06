@@ -1,48 +1,115 @@
-// Colors, card style and date formatting used throughout the app.
+// Colors, fonts, card style and date formatting used throughout the app.
 // Use the `Theme` colors in views, never `Palette` directly, so dark mode keeps working.
 
 import SwiftUI
+import CoreText
 
-// MARK: - Palette (Saphinka Design)
+// MARK: - Palette (Greenhouse + Sprout)
 
-/// The raw brand colors. `Theme` below picks from these for each light/dark mode.
+/// The raw plant colors. `Theme` below picks from these for each light/dark mode.
 enum Palette {
-    static let peony   = Color(hex: 0xE5A3AD)
-    static let cherry  = Color(hex: 0x8E2A21)
-    static let sky     = Color(hex: 0x9AA7C0)
-    static let thunder = Color(hex: 0x434F70)
-    static let linen   = Color(hex: 0xE5E0D1)
-    static let lemon   = Color(hex: 0xEACE94)
-    static let olive   = Color(hex: 0x83854E)
+    static let cream      = Color(hex: 0xF5F1E6)   // page background
+    static let fern       = Color(hex: 0x2F4A3A)   // primary green
+    static let sage       = Color(hex: 0xE3E8DA)   // soft green tint
+    static let terracotta = Color(hex: 0xB4552F)   // clay pots, accents
+    static let honey      = Color(hex: 0xEFD18F)   // warm highlight
+    static let ink        = Color(hex: 0x1F2D24)   // dark text on light chips (both modes)
 }
 
 // MARK: - Design tokens
-// The token names (forest, sage, peach, lavender) are kept from the first
+// The token names (forest, sage, peach, lavender, lemon) are kept from the first
 // version so no other file has to change. Each comment shows what it maps to now.
 
 // Each token has a light-mode and a dark-mode color. iOS switches between them
 // automatically when the phone's appearance changes (Settings → Display & Brightness).
-// The dark colors come from the dark app icon: olive-black, sage green and soft pink.
+// Dark mode is a night greenhouse: deep green-black with pale fern greens.
 
 /// The colors views use. Each one has a light and a dark version.
 enum Theme {
     static let appName = "EverydayApp"
 
-    static let background  = Color(light: 0xF9F6EE, dark: 0x1C1D17)   // cream page / olive-black page
-    static let surface     = Color(light: 0xFFFDF8, dark: 0x26281F)   // warm white cards / raised dark cards
-    static let ink         = Color(light: 0x3B1F2B, dark: 0xF0EBDD)   // deep plum text / warm off-white text
-    static let muted       = Color(light: 0x857B7E, dark: 0xA29D92)   // secondary text
-    static let hairline    = Color(light: 0xE5E0D1, dark: 0x36382C)   // borders, dividers
+    static let background  = Color(light: 0xF5F1E6, dark: 0x131A16)   // cream page / green-black page
+    static let surface     = Color(light: 0xFBF9F3, dark: 0x1C2520)   // warm white cards / raised dark cards
+    static let ink         = Color(light: 0x1F2D24, dark: 0xEEF0E6)   // deep green text / warm off-white text
+    static let muted       = Color(light: 0x5E6B60, dark: 0x9AA597)   // secondary text
+    static let hairline    = Color(light: 0xE2DCCB, dark: 0x2C3730)   // borders, dividers
 
-    static let forest      = Color(light: 0x5B5D33, dark: 0xC9CEA6)   // primary: deep Olive / pale sage (the icon's stem)
-    static let onPrimary   = Color(light: 0xFFFFFF, dark: 0x1C1D17)   // text and icons drawn on top of `forest`
-    static let sage        = Color(light: 0xE3E4D4, dark: 0x31342A)   // Olive tint: hero card, Work events
-    static let peach       = Color(light: 0xF6DFE2, dark: 0x3D2A2E)   // Peony tint: Personal events, avatar
-    static let peachInk    = Color(light: 0x8E2A21, dark: 0xF0B3BC)   // Cherry text on Peony
-    static let lavender    = Color(light: 0xDCE0E9, dark: 0x2A2F3B)   // Sky tint: reminders
-    static let lavenderInk = Color(light: 0x434F70, dark: 0xB9C3DA)   // Thunder text on Sky
-    static let lemon       = Color(light: 0xF5E7CA, dark: 0x3A3222)   // Lemon tint: list cards
-    static let lemonInk    = Color(light: 0x7A5B1E, dark: 0xE8CC92)   // deep mustard text on Lemon
+    static let forest      = Color(light: 0x2F4A3A, dark: 0xA9C8A8)   // primary: Fern / pale fern
+    static let onPrimary   = Color(light: 0xFBF9F3, dark: 0x131A16)   // text and icons drawn on top of `forest`
+    static let sage        = Color(light: 0xE3E8DA, dark: 0x23302A)   // Sage tint: Work events
+    static let peach       = Color(light: 0xF3DCCD, dark: 0x3A2620)   // Clay tint: Personal events, avatar
+    static let peachInk    = Color(light: 0xB4552F, dark: 0xE8A483)   // Terracotta text on Clay
+    static let lavender    = Color(light: 0xF5E4BC, dark: 0x3A3020)   // Honey tint: reminders
+    static let lavenderInk = Color(light: 0x7A5418, dark: 0xE8C98A)   // deep amber text on Honey
+    static let lemon       = Color(light: 0xEADFE6, dark: 0x33283A)   // Bloom tint (soft orchid): list cards
+    static let lemonInk    = Color(light: 0x6B4460, dark: 0xD7B9DA)   // plum text on Bloom
+
+    static let terracotta  = Color(light: 0xB4552F, dark: 0xE08B62)   // italic accents, clay pots
+    static let honey       = Color(light: 0xEFD18F, dark: 0xD9B866)   // warm highlights
+    static let hero        = Color(light: 0x2F4A3A, dark: 0x22382B)   // deep fern hero card (dark in both modes)
+    static let onHero      = Color(light: 0xF5F1E6, dark: 0xEEF0E6)   // cream text on `hero`
+}
+
+// MARK: - Fonts
+// Headings use Instrument Serif (its italic is used for one-word accents) and
+// everything else uses Instrument Sans. Both are free Google Fonts (SIL Open Font
+// License, see Fonts/OFL.txt) bundled in Shared/Fonts and loaded at launch.
+
+enum AppFonts {
+    static let serif = "InstrumentSerif-Regular"
+    static let serifItalic = "InstrumentSerif-Italic"
+    static let sans = "Instrument Sans"
+
+    /// Loads the bundled font files. Called once from EverydayApp.init.
+    static func register() {
+        for name in ["InstrumentSerif-Regular", "InstrumentSerif-Italic", "InstrumentSans"] {
+            guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { continue }
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+
+        // Navigation bar titles in sheets ("New task", "Settings"…) use the serif too.
+        let bar = UINavigationBar.appearance()
+        if let title = UIFont(name: serif, size: 21) {
+            bar.titleTextAttributes = [.font: title]
+        }
+        if let large = UIFont(name: serif, size: 38) {
+            bar.largeTitleTextAttributes = [.font: large]
+        }
+    }
+
+    /// Point sizes for each text style. They still grow and shrink with the
+    /// iPhone's text size setting, because the fonts are made `relativeTo:` the style.
+    static func size(of style: Font.TextStyle, display: Bool) -> CGFloat {
+        // Instrument Serif runs small, so headings get a few extra points.
+        switch style {
+        case .largeTitle: display ? 40 : 34
+        case .title: display ? 33 : 28
+        case .title2: display ? 27 : 22
+        case .title3: display ? 24 : 20
+        case .headline, .body: 17
+        case .callout: 16
+        case .subheadline: 15
+        case .footnote: 13
+        case .caption: 12
+        case .caption2: 11
+        default: 17
+        }
+    }
+}
+
+extension Font {
+    /// Instrument Serif, for screen titles and section headings.
+    /// `italic: true` is for single-word accents like the name in "Good morning, Aubri".
+    static func display(_ style: TextStyle = .largeTitle, italic: Bool = false) -> Font {
+        .custom(italic ? AppFonts.serifItalic : AppFonts.serif,
+                size: AppFonts.size(of: style, display: true), relativeTo: style)
+    }
+
+    /// Instrument Sans, for everything else. `.headline` is semibold, like the system's.
+    static func sans(_ style: TextStyle = .body, _ weight: Weight? = nil) -> Font {
+        .custom(AppFonts.sans, size: AppFonts.size(of: style, display: false), relativeTo: style)
+            .weight(weight ?? (style == .headline ? .semibold : .regular))
+    }
 }
 
 /// The app's Light / Dark choice in Settings. "System" follows the iPhone's own setting.
@@ -90,10 +157,10 @@ enum CardTint: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .sage: "Olive"
-        case .peach: "Peony"
-        case .lavender: "Sky"
-        case .lemon: "Lemon"
+        case .sage: "Sage"
+        case .peach: "Clay"
+        case .lavender: "Honey"
+        case .lemon: "Bloom"
         }
     }
 

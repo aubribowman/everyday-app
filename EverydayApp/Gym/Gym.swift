@@ -147,11 +147,11 @@ final class Exercise {
         setsDoneOn = .now
     }
 
-    /// "3 × 12 · 80 lbs" or "3 × 30 sec"
+    /// "80 lbs · 3 × 12" or "3 × 30 sec"
     var planLine: String {
         let amount = "\(sets) × \(reps)\(isTimed ? " sec" : "")"
         guard let weight else { return amount }
-        return "\(amount) · \(Self.pounds(weight))"
+        return "\(Self.pounds(weight)) · \(amount)"
     }
 
     /// History, newest first.

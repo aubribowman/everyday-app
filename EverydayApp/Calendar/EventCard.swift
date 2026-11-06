@@ -7,10 +7,10 @@ struct TimeLabel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(date.clock)
-                .font(.headline.weight(.medium))
+                .font(.sans(.headline, .medium))
                 .foregroundStyle(Theme.ink)
             Text(date.meridiem)
-                .font(.caption)
+                .font(.sans(.caption))
                 .foregroundStyle(Theme.muted)
         }
         .frame(width: 50, alignment: .leading)
@@ -25,15 +25,15 @@ struct EventCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(event.title)
-                .font(.headline.weight(.medium))
+                .font(.sans(.headline, .medium))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(2)
             Text(event.subtitle)
-                .font(.footnote)
+                .font(.sans(.footnote))
                 .foregroundStyle(event.category.ink)
                 .lineLimit(1)
             Label(event.category.label, systemImage: event.hasVideoCall ? "video" : "calendar")
-                .font(.caption)
+                .font(.sans(.caption))
                 .foregroundStyle(event.category.ink)
         }
         .padding(.leading, 12)
@@ -57,7 +57,7 @@ struct AllDayChip: View {
             Spacer()
             Text("All day").foregroundStyle(Theme.muted)
         }
-        .font(.footnote)
+        .font(.sans(.footnote))
         .foregroundStyle(Theme.ink)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -72,14 +72,14 @@ struct TaskTimelineCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(task.title)
-                .font(.headline.weight(.medium))
+                .font(.sans(.headline, .medium))
                 .foregroundStyle(Theme.ink)
                 .strikethrough(task.isDone)
             Text(task.timeLine)
-                .font(.footnote)
+                .font(.sans(.footnote))
                 .foregroundStyle(Theme.lavenderInk)
             Label("Reminder", systemImage: "bell")
-                .font(.caption)
+                .font(.sans(.caption))
                 .foregroundStyle(Theme.lavenderInk)
         }
         .padding(.leading, 12)

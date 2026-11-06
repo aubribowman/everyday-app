@@ -81,7 +81,7 @@ struct TaskDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 Label(task.dueDate == nil ? "TASK" : "PERSONAL REMINDER", systemImage: "bell")
-                    .font(.caption2.weight(.semibold))
+                    .font(.sans(.caption2, .semibold))
                     .tracking(0.4)
                     .foregroundStyle(Theme.forest)
                     .padding(.horizontal, 10)
@@ -89,7 +89,7 @@ struct TaskDetailView: View {
                     .background(Theme.sage, in: Capsule())
 
                 TextField("Title", text: $task.title, axis: .vertical)
-                    .font(.largeTitle.weight(.semibold))
+                    .font(.display(.largeTitle))
                     .foregroundStyle(Theme.ink)
 
                 settingsCard
@@ -101,7 +101,7 @@ struct TaskDetailView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     Label("NOTE TO SELF", systemImage: "note.text")
-                        .font(.caption2.weight(.semibold))
+                        .font(.sans(.caption2, .semibold))
                         .tracking(0.4)
                         .foregroundStyle(Theme.muted)
                     TextField("Add a note", text: $task.notes, axis: .vertical)
@@ -116,7 +116,7 @@ struct TaskDetailView: View {
                 } label: {
                     Label(task.isDone ? "Mark as not done" : "Mark as complete",
                           systemImage: task.isDone ? "arrow.uturn.backward" : "checkmark")
-                        .font(.headline)
+                        .font(.sans(.headline))
                         .foregroundStyle(Theme.onPrimary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
@@ -191,7 +191,7 @@ struct TaskDetailView: View {
                         showingDatePicker = false
                     }
                 }
-                .font(.footnote)
+                .font(.sans(.footnote))
                 .padding(.bottom, 10)
             }
 
@@ -245,9 +245,9 @@ struct TaskDetailView: View {
                         .frame(width: 38, height: 38)
                         .background(Theme.background, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Add to calendar").font(.body.weight(.medium)).foregroundStyle(Theme.ink)
+                        Text("Add to calendar").font(.sans(.body, .medium)).foregroundStyle(Theme.ink)
                         Text("Shows up in your Google, Outlook or iCloud calendar")
-                            .font(.caption).foregroundStyle(Theme.muted)
+                            .font(.sans(.caption)).foregroundStyle(Theme.muted)
                     }
                 }
             }
@@ -292,20 +292,20 @@ struct LinkedListCard: View {
                     .foregroundStyle(Theme.forest)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(list.name)
-                        .font(.headline)
+                        .font(.sans(.headline))
                         .foregroundStyle(Theme.ink)
                     Text("\(list.remainingCount) items left · \(list.doneCount) \(list.doneLabel.lowercased())")
-                        .font(.footnote)
+                        .font(.sans(.footnote))
                         .foregroundStyle(Theme.forest)
                 }
                 Spacer()
                 Image(systemName: "arrow.up.right")
-                    .font(.footnote)
+                    .font(.sans(.footnote))
                     .foregroundStyle(Theme.forest)
             }
             if !list.openItems.isEmpty {
                 Text(list.openItems.map(\.title).formatted(.list(type: .and)))
-                    .font(.footnote)
+                    .font(.sans(.footnote))
                     .foregroundStyle(Theme.forest)
                     .multilineTextAlignment(.leading)
             }

@@ -36,7 +36,7 @@ struct TasksView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     HStack {
                         Text("Tasks")
-                            .font(.largeTitle.weight(.semibold))
+                            .font(.display(.largeTitle))
                             .tracking(-0.5)
                             .foregroundStyle(Theme.ink)
                         Spacer()

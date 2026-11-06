@@ -74,7 +74,7 @@ struct CalendarView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     HStack {
                         Text("Calendar")
-                            .font(.largeTitle.weight(.semibold))
+                            .font(.display(.largeTitle))
                             .tracking(-0.5)
                             .foregroundStyle(Theme.ink)
                         Spacer()
@@ -90,7 +90,7 @@ struct CalendarView: View {
 
                     HStack {
                         Text(selectedDay.formatted(.dateTime.month(.wide).year()))
-                            .font(.title3.weight(.semibold))
+                            .font(.display(.title3))
                             .foregroundStyle(Theme.ink)
                         Spacer()
                         // Back to today from any week. Hidden when you're already on today.
@@ -99,7 +99,7 @@ struct CalendarView: View {
                                 withAnimation(.snappy) { selectedDay = cal.startOfDay(for: .now) }
                             } label: {
                                 Text("Today")
-                                    .font(.subheadline.weight(.semibold))
+                                    .font(.sans(.subheadline, .semibold))
                                     .foregroundStyle(Theme.forest)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
@@ -128,12 +128,13 @@ struct CalendarView: View {
                     }
 
                     HStack(alignment: .firstTextBaseline) {
-                        Text(selectedDay.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                            .font(.title3.weight(.semibold))
+                        // "Thursday, November 5" with the date in italic.
+                        Text("\(selectedDay.formatted(.dateTime.weekday(.wide))), \(Text(selectedDay.formatted(.dateTime.month(.wide).day())).font(.display(.title3, italic: true)))")
+                            .font(.display(.title3))
                             .foregroundStyle(Theme.ink)
                         Spacer()
                         Text("\(entries.count + allDay.count) planned")
-                            .font(.footnote.weight(.medium))
+                            .font(.sans(.footnote, .medium))
                             .foregroundStyle(Theme.forest)
                     }
 
@@ -149,7 +150,7 @@ struct CalendarView: View {
 
                     if entries.isEmpty && allDay.isEmpty {
                         Text("Nothing planned. Tap + to add something.")
-                            .font(.subheadline)
+                            .font(.sans(.subheadline))
                             .foregroundStyle(Theme.muted)
                     } else {
                         VStack(spacing: 12) {
@@ -171,7 +172,7 @@ struct CalendarView: View {
                     }
 
                     Label("A little breathing room between your plans.", systemImage: "sun.max")
-                        .font(.footnote)
+                        .font(.sans(.footnote))
                         .foregroundStyle(Theme.muted)
                 }
                 .padding(20)
@@ -203,9 +204,9 @@ struct CalendarView: View {
                 } label: {
                     VStack(spacing: 8) {
                         Text(day.formatted(.dateTime.weekday(.narrow)))
-                            .font(.caption2.weight(.medium))
+                            .font(.sans(.caption2, .medium))
                         Text(day.formatted(.dateTime.day()))
-                            .font(.title3.weight(.medium))
+                            .font(.sans(.title3, .medium))
                         Circle()
                             .fill(hasItems ? (isSelected ? Theme.onPrimary : Theme.forest) : Color.clear)
                             .frame(width: 5, height: 5)
@@ -226,7 +227,7 @@ struct CalendarView: View {
     private func legend(_ label: String, _ color: Color) -> some View {
         HStack(spacing: 6) {
             Circle().fill(color).frame(width: 6, height: 6)
-            Text(label).font(.caption).foregroundStyle(Theme.muted)
+            Text(label).font(.sans(.caption)).foregroundStyle(Theme.muted)
         }
     }
 

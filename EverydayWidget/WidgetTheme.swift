@@ -3,13 +3,13 @@ import UIKit
 
 /// The app's colors, copied for the widget (the widget can't see the app's Theme.swift).
 enum WTheme {
-    static let background = Color(light: 0xF9F6EE, dark: 0x1C1D17)
-    static let ink = Color(light: 0x3B1F2B, dark: 0xF0EBDD)
-    static let muted = Color(light: 0x857B7E, dark: 0xA29D92)
-    static let forest = Color(light: 0x5B5D33, dark: 0xC9CEA6)
-    static let sage = Color(light: 0xE3E4D4, dark: 0x31342A)
-    static let peach = Color(light: 0xF6DFE2, dark: 0x3D2A2E)
-    static let peachInk = Color(light: 0x8E2A21, dark: 0xF0B3BC)
+    static let background = Color(light: 0xF5F1E6, dark: 0x131A16)
+    static let ink = Color(light: 0x1F2D24, dark: 0xEEF0E6)
+    static let muted = Color(light: 0x5E6B60, dark: 0x9AA597)
+    static let forest = Color(light: 0x2F4A3A, dark: 0xA9C8A8)
+    static let sage = Color(light: 0xE3E8DA, dark: 0x23302A)
+    static let peach = Color(light: 0xF3DCCD, dark: 0x3A2620)
+    static let peachInk = Color(light: 0xB4552F, dark: 0xE8A483)
 }
 
 extension Color {

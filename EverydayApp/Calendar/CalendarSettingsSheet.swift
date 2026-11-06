@@ -17,10 +17,10 @@ struct CalendarStatusCard: View {
                     .background(Theme.sage, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.sans(.subheadline, .semibold))
                         .foregroundStyle(Theme.ink)
                     Text(subtitle)
-                        .font(.caption)
+                        .font(.sans(.caption))
                         .foregroundStyle(Theme.muted)
                 }
                 Spacer()
@@ -86,7 +86,7 @@ struct CalendarSettingsSheet: View {
 
                 Section {
                     Text("To add Google or Outlook, go to iPhone Settings → Calendar → Accounts → Add Account. New accounts show up here automatically.")
-                        .font(.footnote)
+                        .font(.sans(.footnote))
                         .foregroundStyle(Theme.muted)
                 }
             }
