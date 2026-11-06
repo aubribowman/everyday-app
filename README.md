@@ -2,6 +2,7 @@
 
 A calm iPhone app for your day: tasks, reminders, lists, your calendar, daily habits, your gym
 routine, and the books, shows, restaurants and recipes you want to get to, all in one place.
+It has a greenhouse look: cream and fern green, terracotta pots, and habits that grow into plants.
 Built with SwiftUI and SwiftData.
 
 <p align="center">
@@ -47,9 +48,17 @@ them off. Turn on **Add to calendar** to put a task on your real calendar.
 
 ### Habits
 Track the small things you want to do every day, like "Stretch" or "Drink water" (8 times).
-Tap a habit on Today to check it in. Its ring fills up as you go, and you'll see your streak
-and your best. Open **Habits** to add, edit and reorder them, see your last 7 days, or set a daily
-reminder. If you don't have any habits yet, you can add one of the suggestions with a tap.
+Each habit is a plant on the **Plant shelf** on Today. Tap it to check in, and it grows
+through four stages: **Seed** (not yet), **Sprout** (started), **Leafy** (halfway) and
+**Bloom** (done today). Long-press a plant for more options.
+
+Tap **All habits** to open **Your garden**. There you can see each habit's streak, your best,
+and a bar for each of the last 7 days. You can also add, edit, reorder and delete habits, and
+set a daily reminder. Under **Seeds to plant**, tap a suggestion to add it.
+
+<p align="center">
+  <img src="docs/screenshots/habits.png" width="250" alt="Your garden: habits as potted plants with streaks">
+</p>
 
 ### Lists
 Keep lists for anything: groceries, weekend chores, books to read. Grocery items can have a
@@ -88,7 +97,8 @@ Keep your workout routine in the app. Copy it from the Notes app and tap **Paste
 each day (like "Leg x Glutes Day") becomes a workout, and the days take turns in order. Find it on Today or at the top of the **Lists** tab.
 
 - **Set by set:** at the gym, tap each set when you finish it. If you got fewer reps than
-  planned, tap the set again to change the number.
+  planned, tap the set again to change the number. The bar at the top counts your sets,
+  finished exercises turn green, and the next one is outlined as **Up next**.
 - **Rest timer:** finishing a set starts a rest countdown. It shows on the Lock Screen and in
   the Dynamic Island, and your phone buzzes when it's time for the next set.
 - **Next time:** when you tap **Finish workout**, the app suggests going up 5 lbs on exercises
@@ -103,7 +113,7 @@ each day (like "Leg x Glutes Day") becomes a workout, and the days take turns in
 <p align="center">
   <img src="docs/screenshots/gym.png" width="250" alt="Gym screen with workout days">
   &nbsp;
-  <img src="docs/screenshots/workout.png" width="250" alt="A workout with exercises ticked off">
+  <img src="docs/screenshots/workout.png" width="250" alt="A workout in progress with the rest timer">
 </p>
 
 ### Search
@@ -115,6 +125,13 @@ Add the **Today** widget to see your next events and today's tasks without openi
 It comes in small, medium and large sizes. To add it, long-press your home screen, tap
 **Edit → Add Widget** and choose **Everyday**.
 
+### Look and feel
+Headings use [Instrument Serif](https://fonts.google.com/specimen/Instrument+Serif), with
+its italic for single-word accents (like your name in "Good morning, *Aubri*"). Everything
+else uses [Instrument Sans](https://fonts.google.com/specimen/Instrument+Sans). Both fonts
+still follow your iPhone's text size setting. The colors are cream, fern green, sage,
+terracotta and honey. Lists can be Sage, Clay, Honey or Bloom.
+
 ### Light and dark mode
 Follows your iPhone's setting, or pick Light or Dark yourself by tapping your profile picture
 (or initials) on the Today screen. That's also where you set your name and photo. The app icon has light, dark and tinted versions.
@@ -123,7 +140,8 @@ Follows your iPhone's setting, or pick Light or Dark yourself by tapping your pr
 
 1. Open `EverydayApp.xcodeproj` in Xcode.
 2. Choose an iPhone simulator or your own iPhone, then press **Run** (⌘R).
-3. To see the app filled in, go to the **Lists** tab and tap **Load sample data**.
+3. To see the app filled in, go to the **Lists** tab and tap **Load sample data**. It adds
+   lists, tasks, Library items, three habits and a four-day gym routine.
 
 The app asks for these permissions:
 
@@ -163,10 +181,16 @@ The app's code is in `EverydayApp/`, with one folder per part of the app:
 | `Tasks/` | The Tasks screen and the screen for a single task |
 | `Lists/` | The Lists screen and the screen for a single list |
 | `Library/` | The Library screen; `LibraryLookup.swift` looks up books, shows and restaurants as you type; `RecipeImporter.swift` and `TikTokRecipe.swift` read a recipe from a website link or a TikTok video |
-| `Habits/` | Daily habits (`Habits.swift`: check-ins and streaks) and their screens |
+| `Habits/` | Daily habits (`Habits.swift`: check-ins and streaks), the Your garden screen (`HabitsView.swift`) and the potted plants and growth stages (`PlantShelf.swift`) |
 | `Gym/` | Workouts, sets, weight history, personal bests, gym days and reading a routine pasted from Notes (`Gym.swift`); the Gym screens (`GymView.swift`); saving to Apple Health (`GymHealth.swift`); and the rest countdown on the Lock Screen and Dynamic Island (`RestTimer.swift`) |
-| `Shared/` | Used across the app: `Models.swift` (tasks, lists and Library items, including the repeat logic), `Components.swift` (checkboxes, rows and cards), `Sheets.swift` (pop-ups for adding things and settings), `Theme.swift` (colors, date formatting, appearance), `Search.swift`, `Reminders.swift` (task, habit and gym-day notifications) and `WidgetSync.swift` (shares today's plans with the widget) |
+| `Shared/` | Used across the app: `Models.swift` (tasks, lists and Library items, including the repeat logic), `Components.swift` (checkboxes, rows and cards), `Sheets.swift` (pop-ups for adding things and settings), `Theme.swift` (colors, fonts, date formatting, appearance), `Fonts/` (the bundled Instrument font files), `Search.swift`, `Reminders.swift` (task, habit and gym-day notifications) and `WidgetSync.swift` (shares today's plans with the widget) |
 
 `EverydayWidget/` (next to `EverydayApp/`) is the home screen widget and the rest timer's Lock Screen view, a separate part of the app that iOS runs on its own.
 
 New files go in the folder for their part of the app. Xcode picks them up automatically.
+
+## Credits
+
+Instrument Serif and Instrument Sans were made by [Instrument](https://www.instrument.com) and are free to use under the
+[SIL Open Font License](EverydayApp/Shared/Fonts/OFL.txt). They're bundled in `EverydayApp/Shared/Fonts/`
+and loaded when the app starts (see `AppFonts` in `Theme.swift`).

@@ -119,6 +119,7 @@ struct EventEditSheet: View {
                 }
             }
             .tint(Theme.forest)
+            .themedForm()
             .navigationTitle(editing == nil ? "New event" : "Edit event")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

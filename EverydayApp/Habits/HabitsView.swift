@@ -458,6 +458,7 @@ struct HabitSheet: View {
                     }
                 }
             }
+            .themedForm()
             .navigationTitle(editing == nil ? "New habit" : "Edit habit")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

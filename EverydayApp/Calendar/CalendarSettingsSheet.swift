@@ -91,6 +91,7 @@ struct CalendarSettingsSheet: View {
                 }
             }
             .tint(Theme.forest)
+            .themedForm()
             .navigationTitle("Calendars")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -4,7 +4,7 @@ import SwiftData
 /// Fills the app with data that mirrors the mockup. Used by the
 /// "Load sample data" button and by Xcode previews.
 enum SampleData {
-    /// Adds sample lists, tasks and Library items. Doesn't remove anything first.
+    /// Adds sample lists, tasks, Library items, habits and workouts. Doesn't remove anything first.
     static func load(into context: ModelContext) {
         let cal = Calendar.current
 
@@ -95,5 +95,74 @@ enum SampleData {
         save("Little Olive", "Downtown", .restaurant, .want, "Mediterranean")
         save("Sora Ramen", "Eastside", .restaurant, .want, "Japanese")
         save("Casa Verde", "Old Town", .restaurant, .done, "Mexican", rating: 4)
+
+        // Habits, with a few weeks of history so the streaks and 7-day bars have something to show.
+        func habit(_ name: String, _ icon: String, _ tint: CardTint, target: Int = 1, order: Int,
+                   today: Int, doneDaysAgo: [Int]) {
+            let h = Habit(name: name, icon: icon, tint: tint, target: target, order: order)
+            context.insert(h)
+            var counts = Dictionary(uniqueKeysWithValues: doneDaysAgo.map { ($0, target) })
+            if today > 0 { counts[0] = today }
+            for (daysAgo, count) in counts {
+                let checkIn = HabitCheckIn(day: at(12, daysFromNow: -daysAgo), count: count, target: target)
+                context.insert(checkIn)
+                checkIn.habit = h
+            }
+        }
+        habit("Drink water", "drop", .lavender, target: 8, order: 0, today: 3,
+              doneDaysAgo: [1, 2, 4, 5] + Array(9...17))
+        habit("Stretch", "figure.yoga", .peach, order: 1, today: 1,
+              doneDaysAgo: Array(1...4) + Array(8...19))
+        habit("Read 20 minutes", "book", .lemon, order: 2, today: 0,
+              doneDaysAgo: [2, 4, 5, 6] + Array(10...15))
+
+        // Gym: four workout days. Core was finished yesterday, so Leg x Glutes is today's,
+        // and it's half done: one exercise finished (a new best) and two sets of the next.
+        func workout(_ name: String, _ icon: String, order: Int,
+                     _ moves: [(String, Int, Int, Double?, Bool)]) -> WorkoutDay {
+            let day = WorkoutDay(name: name, icon: icon, order: order)
+            context.insert(day)
+            for (index, move) in moves.enumerated() {
+                let e = Exercise(name: move.0, sets: move.1, reps: move.2, isTimed: move.4,
+                                 weight: move.3, order: index)
+                context.insert(e)
+                e.day = day
+            }
+            return day
+        }
+        let legs = workout("PF Leg x Glutes Day", "figure.strengthtraining.functional", order: 0, [
+            ("Hip Adduction", 3, 12, 85, false),
+            ("Leg Press", 3, 12, 180, false),
+            ("Romanian Deadlift", 3, 10, 65, false),
+            ("Hip Thrust", 3, 10, 135, false),
+            ("Plank", 3, 30, nil, true),
+        ])
+        _ = workout("PF Arm x Shoulder Day", "dumbbell", order: 1, [
+            ("Shoulder Press", 3, 12, 30, false),
+            ("Bicep Curls", 3, 12, 20, false),
+            ("Lateral Raises", 3, 15, 12.5, false),
+            ("Tricep Pushdown", 3, 12, 40, false),
+        ])
+        _ = workout("PF Back x Chest Day", "figure.strengthtraining.traditional", order: 2, [
+            ("Lat Pulldown", 3, 12, 90, false),
+            ("Chest Press", 3, 12, 65, false),
+            ("Seated Row", 3, 12, 85, false),
+        ])
+        let core = workout("PF Core Day", "figure.core.training", order: 3, [
+            ("Dead Bug", 3, 12, nil, false),
+            ("Side Plank", 3, 30, nil, true),
+        ])
+        core.lastCompletedAt = at(18, daysFromNow: -1)
+
+        let moves = legs.sortedExercises
+        // Hip Adduction: 80 lbs last week, 85 today, so it shows "Best!".
+        let earlier = ExerciseLog(date: at(18, daysFromNow: -7), weight: 80, sets: 3, reps: 12)
+        context.insert(earlier)
+        earlier.exercise = moves[0]
+        for _ in 0..<3 { moves[0].finishSet(in: context) }
+        // Leg Press: two sets in, the second came up short.
+        moves[1].finishSet(in: context)
+        moves[1].finishSet(in: context, reps: 10)
+        legs.startedAt = .now.addingTimeInterval(-20 * 60)
     }
 }

@@ -710,6 +710,7 @@ struct NextTimeSheet: View {
                 }
             }
             .tint(Theme.forest)
+            .themedForm()
             .navigationTitle("Nice work!")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -831,6 +832,7 @@ struct ExerciseSheet: View {
                 }
             }
             .tint(Theme.forest)
+            .themedForm()
             .navigationTitle(editing == nil ? "New exercise" : "Edit exercise")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -914,6 +916,7 @@ struct WorkoutDaySheet: View {
             Form {
                 TextField("e.g. Leg x Glutes Day", text: $name)
             }
+            .themedForm()
             .navigationTitle(editing == nil ? "New workout day" : "Rename workout")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -989,6 +992,7 @@ struct ImportRoutineSheet: View {
                 }
             }
             .tint(Theme.forest)
+            .themedForm()
             .navigationTitle("Paste from Notes")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1084,6 +1088,7 @@ struct GymScheduleSheet: View {
                 }
             }
             .tint(Theme.forest)
+            .themedForm()
             .navigationTitle("Schedule & Health")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

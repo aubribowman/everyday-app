@@ -58,6 +58,7 @@ struct NewTaskSheet: View {
                 }
             }
             .tint(Theme.forest)
+            .themedForm()
             .navigationTitle(kind == .reminder ? "New reminder" : "New task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -137,6 +138,7 @@ struct NewListSheet: View {
                 }
             }
             .tint(Theme.forest)
+            .themedForm()
             .navigationTitle(editing == nil ? "New list" : "Edit list")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -189,6 +191,7 @@ struct ItemEditSheet: View {
                 }
             }
             .tint(Theme.forest)
+            .themedForm()
             .navigationTitle("Edit item")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -261,6 +264,7 @@ struct SettingsSheet: View {
                 }
             }
             .tint(Theme.forest)
+            .themedForm()
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -307,6 +311,7 @@ struct TaskIconSheet: View {
                 IconGrid(icons: IconChoices.tasks, selection: $task.icon, allowsNone: true)
                     .padding(20)
             }
+            .themedForm()
             .navigationTitle("Icon")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

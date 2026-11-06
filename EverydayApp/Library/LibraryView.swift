@@ -419,6 +419,7 @@ struct LibraryItemSheet: View {
                 }
             }
             .tint(Theme.forest)
+            .themedForm()
             .navigationTitle("\(editing == nil ? "New" : "Edit") \(kind.singular)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -232,6 +232,12 @@ struct CardStyle: ViewModifier {
 }
 
 extension View {
+    /// Gives a Form or List in a sheet the cream page color instead of iOS's gray.
+    func themedForm() -> some View {
+        scrollContentBackground(.hidden)
+            .background(Theme.background)
+    }
+
     /// Rounded card with padding. Plain (surface) cards get a thin border; tinted ones don't.
     func card(_ fill: Color = Theme.surface) -> some View {
         modifier(CardStyle(fill: fill))
