@@ -218,6 +218,15 @@ struct SettingsSheet: View {
     // The photo still being loaded, so it can be cancelled if you pick again or tap Remove.
     @State private var photoLoad: Task<Void, Never>?
 
+    // Sync and backups (see SyncFolder.swift and Backup.swift).
+    @Environment(SyncFolder.self) private var sync
+    @State private var picking = false          // the one file picker on this screen
+    @State private var pickingFolder = false    // ...choosing a sync folder rather than a backup
+    @State private var foundInFolder: EverydayBackup?   // the other device's copy, waiting for a choice
+    @State private var backupToImport: EverydayBackup?  // a picked backup, waiting for "Replace"
+    @State private var backupFile: URL?
+    @State private var dataMessage: String?
+
     var body: some View {
         NavigationStack {
             Form {
@@ -262,6 +271,9 @@ struct SettingsSheet: View {
                 } footer: {
                     Text("System matches your iPhone's Light or Dark setting.")
                 }
+
+                syncSection
+                backupSection
             }
             .tint(Theme.forest)
             .themedForm()
@@ -290,6 +302,39 @@ struct SettingsSheet: View {
                     pickedPhoto = nil
                 }
             }
+            // SwiftUI won't reliably show two file pickers from one form, so backups and the
+            // sync folder share this one.
+            .fileImporter(isPresented: $picking,
+                          allowedContentTypes: pickingFolder ? [.folder] : [.json]) { result in
+                let forFolder = pickingFolder
+                pickingFolder = false
+                guard case .success(let url) = result else { return }
+                if forFolder { connect(url) } else { readBackup(url) }
+            }
+            .confirmationDialog("There's already data in this folder", isPresented: Binding(
+                get: { foundInFolder != nil }, set: { if !$0 { foundInFolder = nil } }
+            ), titleVisibility: .visible, presenting: foundInFolder) { found in
+                Button("Use the folder's copy") { sync.useFolderCopy(found) }
+                Button("Replace it with this device's", role: .destructive) {
+                    Task { await sync.useThisDevice() }
+                }
+                Button("Cancel", role: .cancel) { sync.disconnect() }
+            } message: { found in
+                Text("It has \(found.summary), last changed \(found.savedAt.formatted(date: .abbreviated, time: .shortened)). Use it on this device, or replace it with what's on this device?")
+            }
+            .confirmationDialog("Replace everything on this device?", isPresented: Binding(
+                get: { backupToImport != nil }, set: { if !$0 { backupToImport = nil } }
+            ), titleVisibility: .visible, presenting: backupToImport) { backup in
+                Button("Replace with backup", role: .destructive) { importBackup(backup) }
+                Button("Cancel", role: .cancel) {}
+            } message: { backup in
+                Text("The backup has \(backup.summary), from \(backup.savedAt.formatted(date: .abbreviated, time: .shortened)). What's on this device now will be replaced.")
+            }
+            .alert(dataMessage ?? "", isPresented: Binding(
+                get: { dataMessage != nil }, set: { if !$0 { dataMessage = nil } }
+            )) {
+                Button("OK") {}
+            }
             .alert("Couldn't use that photo", isPresented: $photoError) {
                 Button("OK") {}
             } message: {
@@ -297,6 +342,96 @@ struct SettingsSheet: View {
             }
         }
         .presentationDetents([.large])
+    }
+
+    // MARK: Sync and backups
+
+    /// Pick the same iCloud Drive folder on each device to keep them in step.
+    private var syncSection: some View {
+        Section {
+            if sync.isOn {
+                LabeledContent("Syncing with", value: sync.folderName ?? "Folder")
+                if let problem = sync.problem {
+                    Label(problem, systemImage: "exclamationmark.triangle.fill")
+                        .font(.sans(.footnote))
+                        .foregroundStyle(Theme.terracotta)
+                } else if let date = sync.lastSynced {
+                    Text("Last checked \(Text(date, style: .relative)) ago")
+                        .font(.sans(.footnote))
+                        .foregroundStyle(Theme.muted)
+                }
+                Button("Sync now", systemImage: "arrow.triangle.2.circlepath") {
+                    Task { await sync.syncNow() }
+                }
+                Button("Change folder", systemImage: "folder") { chooseFolder() }
+                Button("Stop syncing", systemImage: "xmark.circle", role: .destructive) { sync.disconnect() }
+            } else {
+                Button("Choose a sync folder", systemImage: "arrow.triangle.2.circlepath") { chooseFolder() }
+            }
+        } header: {
+            Text("Sync between devices")
+        } footer: {
+            Text(sync.isOn
+                 ? "Changes are shared through this folder. Pick the same folder on your other devices. If both change before they sync, the most recent change wins."
+                 : "Keep your iPhone and iPad in step. In the Files app, make a folder in iCloud Drive (like \u{201C}EverydayApp\u{201D}), then choose it here on each device.")
+        }
+    }
+
+    /// One file with everything, to keep somewhere safe or move to another device.
+    private var backupSection: some View {
+        Section {
+            Button("Import a backup", systemImage: "square.and.arrow.down") {
+                pickingFolder = false
+                picking = true
+            }
+            if let backupFile {
+                ShareLink(item: backupFile) { Label("Share backup file", systemImage: "square.and.arrow.up") }
+            } else {
+                Button("Create a backup", systemImage: "doc.badge.plus") {
+                    do { backupFile = try sync.makeBackupFile() }
+                    catch { dataMessage = "Couldn't make a backup: \(error.localizedDescription)" }
+                }
+            }
+        } header: {
+            Text("Your data")
+        } footer: {
+            Text("A backup is one file with your lists, tasks, library, workouts and habits. Save it somewhere safe, or import it on another device. Calendar events stay in your calendar app.")
+        }
+    }
+
+    private func chooseFolder() {
+        pickingFolder = true
+        picking = true
+    }
+
+    /// Starts syncing. If your other device already put data in the folder, asks which copy
+    /// to keep; otherwise starts the folder with this device's data.
+    private func connect(_ url: URL) {
+        if let found = sync.connect(url) {
+            foundInFolder = found
+        } else if sync.problem == nil {
+            Task { await sync.useThisDevice() }
+        }
+    }
+
+    private func readBackup(_ url: URL) {
+        let ok = url.startAccessingSecurityScopedResource()
+        defer { if ok { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url), let backup = EverydayBackup.decode(data) else {
+            dataMessage = "That file isn't an EverydayApp backup."
+            return
+        }
+        backupToImport = backup
+    }
+
+    private func importBackup(_ backup: EverydayBackup) {
+        do {
+            try sync.importBackup(backup)
+            backupFile = nil
+            dataMessage = "Backup imported"
+        } catch {
+            dataMessage = "Couldn't import the backup: \(error.localizedDescription)"
+        }
     }
 }
 

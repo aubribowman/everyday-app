@@ -144,6 +144,35 @@ terracotta and honey. Lists can be Sage, Clay, Honey or Bloom.
 Follows your iPhone's setting, or pick Light or Dark yourself by tapping your profile picture
 (or initials) on the Today screen. That's also where you set your name and photo. The app icon has light, dark and tinted versions.
 
+### Sync and backups
+Open Settings by tapping your profile picture (or initials) on the Today screen.
+
+- **Sync between devices** keeps your iPhone and iPad in step. See
+  [Keep your iPhone and iPad in sync](#keep-your-iphone-and-ipad-in-sync).
+- **Your data → Create a backup** makes one file with your lists, tasks, Library, workouts, habits,
+  your name and your gym days. Tap **Share backup file** to save it to Files or AirDrop it.
+  **Import a backup** replaces everything on the device with a backup, after asking first.
+
+Calendar events aren't in the backup; they stay in your calendar accounts, which sync on their own.
+
+## Keep your iPhone and iPad in sync
+
+1. In the **Files** app on your iPhone, make a folder in **iCloud Drive**, for example `EverydayApp`.
+2. In the app, open **Settings → Sync between devices → Choose a sync folder** and pick that folder.
+   The app saves a file named `EverydayApp.json` there.
+3. On your iPad, do the same and pick the same folder. The app finds your iPhone's data and asks
+   which copy to keep. Choose **Use the folder's copy**.
+
+After that, each change is saved to the folder a few seconds later, and iCloud copies it to your
+other device. The app checks for changes when it opens, every 30 seconds while it's open, and when
+you leave it. **Sync now** checks right away.
+
+- If you change both devices before they've had a chance to sync, the most recent change wins and
+  the other is lost. Give iCloud a moment between devices.
+- Sync works with a free Apple developer account, because the app only uses a folder you pick. It
+  doesn't need Apple's built-in iCloud sync, which needs a paid account.
+- The sync file uses the same format as a backup, so you can also import it.
+
 ## Running the app
 
 1. Open `EverydayApp.xcodeproj` in Xcode.
@@ -191,7 +220,7 @@ The app's code is in `EverydayApp/`, with one folder per part of the app:
 | `Library/` | The Library screen; `LibraryLookup.swift` looks up books, shows and restaurants as you type; `RecipeImporter.swift` and `TikTokRecipe.swift` read a recipe from a website link or a TikTok video |
 | `Habits/` | Daily habits (`Habits.swift`: check-ins and streaks), the Your garden screen (`HabitsView.swift`) and the potted plants and growth stages (`PlantShelf.swift`) |
 | `Gym/` | Workouts, sets, weight history, personal bests, gym days and reading a routine pasted from Notes (`Gym.swift`); the Gym screens (`GymView.swift`); saving to Apple Health (`GymHealth.swift`); and the rest countdown on the Lock Screen and Dynamic Island (`RestTimer.swift`) |
-| `Shared/` | Used across the app: `Models.swift` (tasks, lists and Library items, including the repeat logic), `Components.swift` (checkboxes, rows and cards), `Sheets.swift` (pop-ups for adding things and settings), `Theme.swift` (colors, fonts, date formatting, appearance), `Fonts/` (the bundled Instrument font files), `Search.swift`, `Reminders.swift` (task, habit and gym-day notifications) and `WidgetSync.swift` (shares today's plans with the widget) |
+| `Shared/` | Used across the app: `Models.swift` (tasks, lists and Library items, including the repeat logic), `Components.swift` (checkboxes, rows and cards), `Sheets.swift` (pop-ups for adding things and settings), `Theme.swift` (colors, fonts, date formatting, appearance), `Fonts/` (the bundled Instrument font files), `Search.swift`, `Reminders.swift` (task, habit and gym-day notifications), `WidgetSync.swift` (shares today's plans with the widget), `Backup.swift` (the backup file format) and `SyncFolder.swift` (syncing through a folder in iCloud Drive) |
 
 `EverydayWidget/` (next to `EverydayApp/`) is the home screen widget and the rest timer's Lock Screen view, a separate part of the app that iOS runs on its own.
 

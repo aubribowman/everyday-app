@@ -14,6 +14,7 @@ enum AppTab: Hashable {
 struct ContentView: View {
     @Environment(CalendarStore.self) private var calendarStore
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(SyncFolder.self) private var syncFolder
     @State private var tab: AppTab = .today
     @Query private var allTasks: [TaskItem]
     @Query private var allHabits: [Habit]
@@ -65,6 +66,14 @@ struct ContentView: View {
             WidgetSync.update(tasks: allTasks, calendarStore: calendarStore)
         }
         // Keep the home screen widget current when calendars change (see WidgetSync.swift).
+        // While the app is open, check the sync folder now and every 30 seconds (see SyncFolder.swift).
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                await syncFolder.syncNow()
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
         .onChange(of: calendarStore.changeToken) {
             WidgetSync.update(tasks: allTasks, calendarStore: calendarStore)
         }
@@ -80,6 +89,7 @@ struct ContentView: View {
             }
             // Leaving the app: save a fresh summary for the widget (times may have passed).
             if phase == .background {
+                Task { await syncFolder.syncNow() }   // send your latest changes before the app sleeps
                 WidgetSync.update(tasks: allTasks, calendarStore: calendarStore)
             }
         }
@@ -104,4 +114,5 @@ private func previewContent() -> some View {
     return ContentView()
         .modelContainer(container)
         .environment(CalendarStore())
+        .environment(SyncFolder(container: container))
 }

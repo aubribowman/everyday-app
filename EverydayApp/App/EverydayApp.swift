@@ -15,6 +15,8 @@ struct EverydayApp: App {
     // Made here (rather than with `.modelContainer(for:)`) so reminders can use it too:
     // tapping "Done" on a habit notification checks it in without opening the app.
     private let container: ModelContainer
+    // Keeps your devices in step through a folder you pick (see SyncFolder.swift).
+    private let syncFolder: SyncFolder
 
     init() {
         do {
@@ -25,6 +27,7 @@ struct EverydayApp: App {
             fatalError("Couldn't open the app's data: \(error)")
         }
         Reminders.shared.container = container
+        syncFolder = SyncFolder(container: container)
         AppFonts.register()   // Instrument Serif + Sans (see Theme.swift)
     }
 
@@ -34,6 +37,7 @@ struct EverydayApp: App {
             // and whenever it changes in Settings.
             ContentView()
                 .environment(calendarStore)
+                .environment(syncFolder)
                 .font(.sans())   // Instrument Sans for any text without its own font
                 .onChange(of: appearance, initial: true) { _, setting in setting.apply() }
         }
