@@ -139,6 +139,8 @@ struct HabitsView: View {
     @Query(sort: \Habit.order) private var habits: [Habit]
     @State private var adding = false
     @State private var editing: Habit?
+    @AppStorage(HabitNudge.remindKey) private var nudge = false
+    @AppStorage(HabitNudge.minutesKey) private var nudgeMinutes = HabitNudge.defaultMinutes
 
     /// Ideas you haven't added yet.
     private var seeds: [HabitIdeas.Idea] {
@@ -195,6 +197,8 @@ struct HabitsView: View {
                         .font(.sans(.caption))
                         .foregroundStyle(Theme.muted)
                         .padding(.horizontal, 4)
+
+                    checkInCard
                 }
 
                 if !seeds.isEmpty { seedChips }
@@ -214,6 +218,35 @@ struct HabitsView: View {
         }
         .sheet(isPresented: $adding) { HabitSheet(order: habits.count) }
         .sheet(item: $editing) { HabitSheet(editing: $0) }
+    }
+
+    /// The evening check-in reminder: one notification listing the habits not logged yet.
+    private var checkInCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Toggle(isOn: $nudge.animation()) {
+                Label("Evening check-in", systemImage: "bell")
+            }
+            .padding(.vertical, 10)
+            if nudge {
+                Divider().overlay(Theme.hairline)
+                DatePicker("Time", selection: $nudgeMinutes.timeOfDay, displayedComponents: .hourAndMinute)
+                    .padding(.vertical, 6)
+            }
+            Text(nudge
+                 ? "At \(nudgeMinutes.timeOfDayText), a reminder listing any habits you haven't logged yet. None once they're all done. Open a habit to give it its own reminder too."
+                 : "A reminder each evening to log any habits you haven't yet.")
+                .font(.sans(.caption))
+                .foregroundStyle(Theme.muted)
+                .padding(.bottom, 12)
+                .padding(.top, 4)
+        }
+        .font(.sans(.subheadline))
+        .foregroundStyle(Theme.ink)
+        .tint(Theme.forest)
+        .padding(.horizontal, 16)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.hairline))
+        .padding(.top, 4)
     }
 
     /// The six growth stages, from Seed to Flourish, and how the game works.

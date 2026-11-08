@@ -235,3 +235,11 @@ enum HabitIdeas {
                         "pills", "leaf", "carrot", "fork.knife", "cup.and.saucer",
                         "sun.max", "heart", "music.note", "dollarsign.circle", "sparkles"]
 }
+
+/// The evening check-in: one reminder listing the habits you haven't logged yet.
+/// Kept on each device (not in backups), like notification settings in iOS.
+enum HabitNudge {
+    static let remindKey = "habitNudge"
+    static let minutesKey = "habitNudgeMinutes"   // minutes after midnight
+    static let defaultMinutes = 20 * 60           // 8 PM
+}

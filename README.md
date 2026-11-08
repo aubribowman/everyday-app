@@ -61,8 +61,11 @@ stage pops up a little celebration.
 Tap **All habits** to open **Your garden**. There you can see each habit's stage, its streak,
 your best, and the last 7 days. **Forgot to log a day?** Tap any of the last 7 days to mark it
 done or not done. To fix an older day, open the habit and use the **Past 5 weeks** calendar.
-You can also add, edit, reorder and delete habits, and set a daily reminder. Under **Seeds to
-plant**, tap a suggestion to add it.
+You can also add, edit, reorder and delete habits, and give each one a daily reminder (with a
+**Done** button on the notification). Turn on **Evening check-in** for one reminder at a time you
+pick that lists the habits you haven't logged yet, such as "Still to log: Drink water and Read 20
+minutes". It skips the day once they're all done. Under **Seeds to plant**, tap a suggestion to
+add it.
 
 <p align="center">
   <img src="docs/screenshots/habits.png" width="250" alt="Your garden: habits as potted plants with streaks">
@@ -80,6 +83,10 @@ your next period should start and your fertile window. Tap **Log period today** 
 - **Your averages** (cycle length and period length) and your **recent periods**.
 - **Settings** for your typical cycle and period length, which are used until you've logged two
   periods, and **Show on Today** to hide or show the card.
+- **Reminders**, at a time you pick: **Before my period** sends a heads-up 2 days before it's
+  expected. **Remind me to log it** asks "Has your period started?" once it's due and "Still on
+  your period?" each day while it's on. Tap **Log today** on the notification to log it without
+  opening the app.
 
 Predictions are estimates based on what you've logged. They aren't medical advice and shouldn't
 be used as birth control.
@@ -201,7 +208,7 @@ The app asks for these permissions:
 
 - **Calendar:** to show, add and edit your events. Your Google or Outlook calendars appear once
   those accounts are added in iPhone **Settings → Apps → Calendar → Calendar Accounts**.
-- **Notifications:** for task, habit and gym reminders and the rest timer.
+- **Notifications:** for task, habit, gym and cycle reminders and the rest timer.
 - **Apple Health** (only if you turn it on): to save finished workouts. The app also reads your
   weight to estimate calories.
 
@@ -238,7 +245,7 @@ The app's code is in `EverydayApp/`, with one folder per part of the app:
 | `Habits/` | Daily habits (`Habits.swift`: check-ins and streaks), the Your garden screen (`HabitsView.swift`) and the potted plants and growth stages (`PlantShelf.swift`) |
 | `Cycle/` | Period tracking: logged days and the predictions worked out from them (`Cycle.swift`), and the Your cycle card, screen and day sheet (`CycleView.swift`) |
 | `Gym/` | Workouts, sets, weight history, personal bests, gym days and reading a routine pasted from Notes (`Gym.swift`); the Gym screens (`GymView.swift`); saving to Apple Health (`GymHealth.swift`); and the rest countdown on the Lock Screen and Dynamic Island (`RestTimer.swift`) |
-| `Shared/` | Used across the app: `Models.swift` (tasks, lists and Library items, including the repeat logic), `Components.swift` (checkboxes, rows and cards), `Sheets.swift` (pop-ups for adding things and settings), `Theme.swift` (colors, fonts, date formatting, appearance), `Fonts/` (the bundled Instrument font files), `Search.swift`, `Reminders.swift` (task, habit and gym-day notifications), `WidgetSync.swift` (shares today's plans with the widget), `Backup.swift` (the backup file format) and `SyncFolder.swift` (syncing through a folder in iCloud Drive) |
+| `Shared/` | Used across the app: `Models.swift` (tasks, lists and Library items, including the repeat logic), `Components.swift` (checkboxes, rows and cards), `Sheets.swift` (pop-ups for adding things and settings), `Theme.swift` (colors, fonts, date formatting, appearance), `Fonts/` (the bundled Instrument font files), `Search.swift`, `Reminders.swift` (task, habit, gym-day and cycle notifications), `WidgetSync.swift` (shares today's plans with the widget), `Backup.swift` (the backup file format) and `SyncFolder.swift` (syncing through a folder in iCloud Drive) |
 
 `EverydayWidget/` (next to `EverydayApp/`) is the home screen widget and the rest timer's Lock Screen view, a separate part of the app that iOS runs on its own.
 

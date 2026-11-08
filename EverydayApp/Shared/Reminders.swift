@@ -1,9 +1,11 @@
 import Foundation
 import SwiftData
+import SwiftUI
 import UserNotifications
 
 /// Sends a notification for each task at its "Remind me" time, for each habit
-/// with a daily reminder, and on your gym days ("Arm x Shoulder Day today").
+/// with a daily reminder, an evening habit check-in, on your gym days ("Arm x Shoulder
+/// Day today"), and for your cycle (before your period, and to log it while it's on).
 ///
 /// Rather than adding and removing notifications one by one, `update(for:)` clears
 /// everything and schedules again from the full task list. ContentView calls it whenever
@@ -26,6 +28,8 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
     private static let countedHabitCategory = "habit-count" // several times a day: Add one, All done
     nonisolated private static let doneAction = "habit.done"
     nonisolated private static let addOneAction = "habit.one"
+    private static let cycleCategory = "cycle-log"          // Log today
+    nonisolated private static let logPeriodAction = "cycle.log"
 
     override init() {
         super.init()
@@ -36,22 +40,28 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
                                            icon: UNNotificationActionIcon(systemImageName: "checkmark"))
         let addOne = UNNotificationAction(identifier: Self.addOneAction, title: "Add one",
                                           icon: UNNotificationActionIcon(systemImageName: "plus"))
+        let logPeriod = UNNotificationAction(identifier: Self.logPeriodAction, title: "Log today",
+                                             icon: UNNotificationActionIcon(systemImageName: "drop.fill"))
         center.setNotificationCategories([
             UNNotificationCategory(identifier: Self.habitCategory, actions: [done], intentIdentifiers: []),
             UNNotificationCategory(identifier: Self.countedHabitCategory, actions: [addOne, allDone],
                                    intentIdentifiers: []),
+            UNNotificationCategory(identifier: Self.cycleCategory, actions: [logPeriod], intentIdentifiers: []),
         ])
     }
 
-    /// Replaces every scheduled notification with a fresh set for these tasks, habits and gym days.
+    /// Replaces every scheduled notification with a fresh set for these tasks, habits, gym days
+    /// and cycle days.
     /// Asks for notification permission the first time there's something to schedule.
     /// Task reminders come first. If there are more than `limit`, the latest ones wait
     /// until the next update.
-    func update(for tasks: [TaskItem], habits: [Habit] = [], workouts: [WorkoutDay] = []) async {
+    func update(for tasks: [TaskItem], habits: [Habit] = [], workouts: [WorkoutDay] = [],
+                cycleDays: [CycleDay] = []) async {
         let due = tasks.filter(needsReminder)
             .sorted { ($0.nudgeDate ?? .distantFuture) < ($1.nudgeDate ?? .distantFuture) }
-        // Habits and gym days share whatever room tasks leave, soonest first.
-        let habitRequests = (requests(for: habits) + gymRequests(for: workouts))
+        // Habits, gym days and your cycle share whatever room tasks leave, soonest first.
+        let habitRequests = (requests(for: habits) + checkInRequests(for: habits)
+                             + gymRequests(for: workouts) + cycleRequests(for: cycleDays))
             .sorted { $0.date < $1.date }.map(\.request)
 
         // Ask for permission the first time there's something to remind you about.
@@ -118,6 +128,110 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
                 let parts = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
                 let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
                 found.append((fire, UNNotificationRequest(identifier: "\(id)-\(offset)", content: content, trigger: trigger)))
+            }
+        }
+        return found
+    }
+
+    /// The evening check-in: "Still to log: Read, Water" at the time you picked, for the
+    /// next week. Today's is skipped once every habit is done.
+    private func checkInRequests(for habits: [Habit]) -> [(date: Date, request: UNNotificationRequest)] {
+        let defaults = UserDefaults.standard
+        guard defaults.bool(forKey: HabitNudge.remindKey), !habits.isEmpty else { return [] }
+        let minutes = defaults.object(forKey: HabitNudge.minutesKey) as? Int ?? HabitNudge.defaultMinutes
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: .now)
+        var found: [(date: Date, request: UNNotificationRequest)] = []
+
+        for offset in 0..<habitDays {
+            guard let day = cal.date(byAdding: .day, value: offset, to: today),
+                  let fire = cal.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day),
+                  fire > .now else { continue }
+            let content = UNMutableNotificationContent()
+            content.title = "Log today's habits"
+            if offset == 0 {
+                let left = habits.filter { !$0.isDoneToday }
+                if left.isEmpty { continue }   // all done today
+                content.body = left.count == 1 ? "\(left[0].name) isn't logged yet."
+                    : "Still to log: " + left.map(\.name).formatted(.list(type: .and))
+            } else {
+                content.body = "Did you water your garden today? Tap to log your habits."
+            }
+            content.sound = .default
+            let parts = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
+            found.append((fire, UNNotificationRequest(identifier: "habit-checkin-\(offset)", content: content,
+                                                      trigger: trigger)))
+        }
+        return found
+    }
+
+    // MARK: Cycle
+
+    /// Your cycle reminders, if they're on:
+    /// - two days before each of the next two predicted periods, a heads-up
+    /// - once it's due, "Has your period started?" for three days, with a Log today button
+    /// - while you're on it, "Still on your period?" each day until it's likely over
+    /// None for today once today is logged.
+    private func cycleRequests(for days: [CycleDay]) -> [(date: Date, request: UNNotificationRequest)] {
+        let defaults = UserDefaults.standard
+        let before = defaults.bool(forKey: CycleSettings.remindBeforeKey)
+        let logging = defaults.bool(forKey: CycleSettings.remindLogKey)
+        guard before || logging, !days.isEmpty else { return [] }
+        let minutes = defaults.object(forKey: CycleSettings.remindMinutesKey) as? Int ?? CycleSettings.defaultRemindMinutes
+        let summary = CycleSummary(
+            days: days,
+            typicalCycle: defaults.object(forKey: CycleSettings.cycleLengthKey) as? Int ?? CycleSettings.defaultCycle,
+            typicalPeriod: defaults.object(forKey: CycleSettings.periodLengthKey) as? Int ?? CycleSettings.defaultPeriod)
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: .now)
+        let loggedToday = days.contains { cal.isDate($0.day, inSameDayAs: today) && !$0.flow.isEmpty }
+        var found: [(date: Date, request: UNNotificationRequest)] = []
+
+        func add(_ day: Date, id: String, title: String, body: String, logButton: Bool) {
+            if logButton && loggedToday && cal.isDate(day, inSameDayAs: today) { return }
+            guard let fire = cal.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day),
+                  fire > .now else { return }
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+            if logButton { content.categoryIdentifier = Self.cycleCategory }
+            let parts = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
+            found.append((fire, UNNotificationRequest(identifier: id, content: content, trigger: trigger)))
+        }
+
+        if before {
+            for (n, period) in summary.predictedPeriods.prefix(2).enumerated() {
+                guard let day = cal.date(byAdding: .day, value: -2, to: period.lowerBound) else { continue }
+                let date = period.lowerBound.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
+                add(day, id: "cycle-soon-\(n)", title: "Period in about 2 days",
+                    body: "Based on your cycle, it may start around \(date).", logButton: false)
+            }
+        }
+
+        if logging {
+            if summary.isOnPeriod, let start = summary.lastPeriod?.start,
+               let lastDay = cal.date(byAdding: .day, value: summary.averagePeriod, to: start) {
+                // Each day until it's likely over, plus one more.
+                var day = today
+                var n = 0
+                while day <= lastDay, n < 10 {
+                    add(day, id: "cycle-log-\(n)", title: "Still on your period?",
+                        body: "Tap Log today to keep your cycle up to date.", logButton: true)
+                    day = cal.date(byAdding: .day, value: 1, to: day) ?? lastDay.addingTimeInterval(86_400)
+                    n += 1
+                }
+            } else if let next = summary.nextStart {
+                // From the day it's due (or today, if it's late), for three days.
+                let from = max(cal.startOfDay(for: next), today)
+                for n in 0..<3 {
+                    guard let day = cal.date(byAdding: .day, value: n, to: from) else { continue }
+                    add(day, id: "cycle-start-\(n)", title: "Has your period started?",
+                        body: "It was expected around \(next.monthDay). Log it to keep your predictions accurate.",
+                        logButton: true)
+                }
             }
         }
         return found
@@ -211,11 +325,34 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
             habit.addOne(in: context)
         }
         try? context.save()
+        await updateAll(in: context)
+    }
 
-        let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
-        let habits = (try? context.fetch(FetchDescriptor<Habit>())) ?? []
-        let workouts = (try? context.fetch(FetchDescriptor<WorkoutDay>())) ?? []
-        await update(for: tasks, habits: habits, workouts: workouts)
+    /// "Log today" tapped on a cycle notification: marks today as a period day, with the
+    /// same flow as yesterday (or medium), then sets up reminders again.
+    private func logPeriodToday() async {
+        guard let container else { return }
+        let context = container.mainContext
+        let cal = Calendar.current
+        let days = (try? context.fetch(FetchDescriptor<CycleDay>())) ?? []
+        let today = cal.startOfDay(for: .now)
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today) ?? today
+        let flow = days.first { cal.isDate($0.day, inSameDayAs: yesterday) && $0.isPeriod }?.flowValue ?? .medium
+        if let log = days.first(where: { cal.isDate($0.day, inSameDayAs: today) }) {
+            if !log.isPeriod { log.flow = flow.rawValue }
+        } else {
+            context.insert(CycleDay(day: today, flow: flow))
+        }
+        try? context.save()
+        await updateAll(in: context)
+    }
+
+    /// Sets up every reminder again from what's saved.
+    private func updateAll(in context: ModelContext) async {
+        await update(for: (try? context.fetch(FetchDescriptor<TaskItem>())) ?? [],
+                     habits: (try? context.fetch(FetchDescriptor<Habit>())) ?? [],
+                     workouts: (try? context.fetch(FetchDescriptor<WorkoutDay>())) ?? [],
+                     cycleDays: (try? context.fetch(FetchDescriptor<CycleDay>())) ?? [])
     }
 
     /// Called when you tap a button under a habit notification ("Done" or "Add one").
@@ -224,6 +361,10 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
         didReceive response: UNNotificationResponse
     ) async {
         let action = response.actionIdentifier
+        if action == Self.logPeriodAction {
+            await logPeriodToday()
+            return
+        }
         guard action == Self.doneAction || action == Self.addOneAction,
               let key = response.notification.request.content.userInfo["habit"] as? String else { return }
         await checkIn(habitKey: key, allTheWay: action == Self.doneAction)
@@ -235,5 +376,28 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
         [.banner, .sound, .list]
+    }
+}
+
+extension Binding where Value == Int {
+    /// Minutes after midnight as a time of day, for a DatePicker showing hours and minutes.
+    var timeOfDay: Binding<Date> {
+        Binding<Date>(
+            get: {
+                Calendar.current.date(bySettingHour: wrappedValue / 60, minute: wrappedValue % 60,
+                                      second: 0, of: .now) ?? .now
+            },
+            set: { date in
+                let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
+                wrappedValue = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+            })
+    }
+}
+
+extension Int {
+    /// 1230 minutes → "8:30 PM"
+    var timeOfDayText: String {
+        let date = Calendar.current.date(bySettingHour: self / 60, minute: self % 60, second: 0, of: .now) ?? .now
+        return date.formatted(date: .omitted, time: .shortened)
     }
 }

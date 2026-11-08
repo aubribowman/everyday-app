@@ -68,8 +68,13 @@ enum CycleSettings {
     static let periodLengthKey = "periodLength"   // typical days of bleeding
     static let showOnTodayKey = "cycleOnToday"    // show the card on the Today tab
 
+    static let remindBeforeKey = "cycleRemindBefore"   // a heads-up 2 days before your period
+    static let remindLogKey = "cycleRemindLog"         // reminders to log it while it's due or on
+    static let remindMinutesKey = "cycleRemindMinutes" // minutes after midnight
+
     static let defaultCycle = 28
     static let defaultPeriod = 5
+    static let defaultRemindMinutes = 20 * 60          // 8 PM
 }
 
 /// A period: from its first to its last day of bleeding.

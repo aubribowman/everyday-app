@@ -182,6 +182,9 @@ struct CycleView: View {
     @AppStorage(CycleSettings.cycleLengthKey) private var typicalCycle = CycleSettings.defaultCycle
     @AppStorage(CycleSettings.periodLengthKey) private var typicalPeriod = CycleSettings.defaultPeriod
     @AppStorage(CycleSettings.showOnTodayKey) private var showOnToday = true
+    @AppStorage(CycleSettings.remindBeforeKey) private var remindBefore = false
+    @AppStorage(CycleSettings.remindLogKey) private var remindLog = false
+    @AppStorage(CycleSettings.remindMinutesKey) private var remindMinutes = CycleSettings.defaultRemindMinutes
     @State private var month = Calendar.current.dateInterval(of: .month, for: .now)?.start ?? .now
     @State private var editing: CycleDayPick?
 
@@ -210,6 +213,13 @@ struct CycleView: View {
                 stats(summary)
                 if !summary.periods.isEmpty { history(summary) }
                 settings
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Re\(Text("minders").font(.display(.title3, italic: true)))")
+                        .font(.display(.title3))
+                        .foregroundStyle(Theme.ink)
+                        .padding(.top, 4)
+                    reminders
+                }
 
                 Text("Predictions are estimates based on what you've logged. They aren't medical advice and shouldn't be used as birth control.")
                     .font(.sans(.caption))
@@ -307,7 +317,8 @@ struct CycleView: View {
                             .font(.sans(.subheadline, .medium))
                             .foregroundStyle(Theme.ink)
                         Spacer()
-                        Text(row.1.map { "\(row.0.length) days · \($0)-day cycle" } ?? "\(row.0.length) days")
+                        let days = row.0.length == 1 ? "1 day" : "\(row.0.length) days"
+                        Text(row.1.map { "\(days) · \($0)-day cycle" } ?? days)
                             .font(.sans(.footnote))
                             .foregroundStyle(Theme.muted)
                     }
@@ -347,6 +358,47 @@ struct CycleView: View {
         .padding(.horizontal, 16)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.hairline))
+    }
+
+    /// Notifications: a heads-up before your period, and reminders to log it.
+    private var reminders: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Toggle("Before my period", isOn: $remindBefore.animation())
+                .padding(.vertical, 10)
+            Divider().overlay(Theme.hairline)
+            Toggle("Remind me to log it", isOn: $remindLog.animation())
+                .padding(.vertical, 10)
+            if remindBefore || remindLog {
+                Divider().overlay(Theme.hairline)
+                DatePicker("Time", selection: $remindMinutes.timeOfDay, displayedComponents: .hourAndMinute)
+                    .padding(.vertical, 6)
+            }
+            Text(reminderNote)
+                .font(.sans(.caption))
+                .foregroundStyle(Theme.muted)
+                .padding(.bottom, 12)
+                .padding(.top, 4)
+        }
+        .font(.sans(.subheadline))
+        .foregroundStyle(Theme.ink)
+        .tint(Theme.forest)
+        .padding(.horizontal, 16)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.hairline))
+    }
+
+    private var reminderNote: String {
+        let time = remindMinutes.timeOfDayText
+        switch (remindBefore, remindLog) {
+        case (true, true):
+            return "At \(time): a heads-up 2 days before your period, then a reminder each day to log it, with a Log today button."
+        case (true, false):
+            return "At \(time), 2 days before your period is expected."
+        case (false, true):
+            return "At \(time): \u{201C}Has your period started?\u{201D} once it's due, and \u{201C}Still on your period?\u{201D} each day while it's on. Tap Log today on the notification to log it."
+        default:
+            return "Get a heads-up before your period, and reminders to log it."
+        }
     }
 }
 
