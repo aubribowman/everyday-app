@@ -116,6 +116,21 @@ enum SampleData {
         habit("Read 20 minutes", "book", .lemon, order: 2, today: 0,
               doneDaysAgo: [2, 4, 5, 6] + Array(10...12))
 
+        // Cycle: three periods four weeks apart. The latest ended 8 days ago, so the
+        // fertile window is coming up and the next period is about two weeks out.
+        for (startDaysAgo, flows) in [(68, [3, 3, 2, 1, 1]), (40, [2, 3, 2, 1, 1]), (12, [3, 3, 2, 1])] {
+            for (offset, drops) in flows.enumerated() {
+                let flow: Flow = drops == 3 ? .heavy : drops == 2 ? .medium : .light
+                let day = CycleDay(day: at(12, daysFromNow: -(startDaysAgo - offset)), flow: flow)
+                if offset == 0 { day.symptoms = ["Cramps", "Tired"] }
+                if offset == 1 { day.symptoms = ["Cramps"] }
+                context.insert(day)
+            }
+        }
+        let headache = CycleDay(day: at(12, daysFromNow: -14))
+        headache.symptoms = ["Headache", "Bloating"]
+        context.insert(headache)
+
         // Gym: four workout days. Core was finished yesterday, so Leg x Glutes is today's,
         // and it's half done: one exercise finished (a new best) and two sets of the next.
         func workout(_ name: String, _ icon: String, order: Int,

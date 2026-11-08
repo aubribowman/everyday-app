@@ -5,7 +5,8 @@
 import SwiftUI
 import SwiftData
 
-/// The five tabs. TodayView takes a binding to this so its cards can switch tabs.
+/// The five tabs. TodayView takes a
+/// 000binding to this so its cards can switch tabs.
 enum AppTab: Hashable {
     case today, calendar, lists, library, tasks
 }
@@ -107,7 +108,7 @@ struct ContentView: View {
 /// The app filled with sample data, for Xcode previews.
 private func previewContent() -> some View {
     let container = try! ModelContainer(
-        for: TaskList.self, TaskItem.self, LibraryItem.self, WorkoutDay.self, Exercise.self, ExerciseLog.self, Habit.self, HabitCheckIn.self,
+        for: TaskList.self, TaskItem.self, LibraryItem.self, WorkoutDay.self, Exercise.self, ExerciseLog.self, Habit.self, HabitCheckIn.self, CycleDay.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     SampleData.load(into: container.mainContext)

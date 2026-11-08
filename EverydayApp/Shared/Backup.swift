@@ -23,6 +23,7 @@ struct EverydayBackup: Codable {
     var library: [LibraryEntry] = []
     var workouts: [Workout] = []
     var habits: [HabitEntry] = []
+    var cycleDays: [CycleEntry]? = []   // optional: backups from before the period tracker don't have it
     var settings = Settings()
 
     static let appName = "EverydayApp"
@@ -123,12 +124,22 @@ struct EverydayBackup: Codable {
         var target: Int
     }
 
-    /// The few settings worth carrying to another device: your name and your gym days.
+    struct CycleEntry: Codable {
+        var day: Date
+        var flow: String
+        var symptoms: [String]
+        var note: String
+    }
+
+    /// The few settings worth carrying to another device: your name, your gym days and
+    /// your typical cycle.
     struct Settings: Codable {
         var userName: String?
         var gymDays: String?
         var gymRemind: Bool?
         var gymRemindMinutes: Int?
+        var cycleLength: Int?
+        var periodLength: Int?
     }
 }
 
@@ -196,11 +207,17 @@ extension EverydayBackup {
                            })
             }
 
+        cycleDays = try context.fetch(FetchDescriptor<CycleDay>())
+            .sorted { $0.day < $1.day }
+            .map { CycleEntry(day: $0.day, flow: $0.flow, symptoms: $0.symptoms, note: $0.note) }
+
         let defaults = UserDefaults.standard
         settings = Settings(userName: defaults.string(forKey: "userName"),
                             gymDays: defaults.string(forKey: Gym.Schedule.daysKey),
                             gymRemind: defaults.object(forKey: Gym.Schedule.remindKey) as? Bool,
-                            gymRemindMinutes: defaults.object(forKey: Gym.Schedule.minutesKey) as? Int)
+                            gymRemindMinutes: defaults.object(forKey: Gym.Schedule.minutesKey) as? Int,
+                            cycleLength: defaults.object(forKey: CycleSettings.cycleLengthKey) as? Int,
+                            periodLength: defaults.object(forKey: CycleSettings.periodLengthKey) as? Int)
     }
 
     // A steady order, so the same data always makes the same file (see `fingerprint`).
@@ -226,6 +243,7 @@ extension EverydayBackup {
         try context.fetch(FetchDescriptor<WorkoutDay>()).forEach(context.delete)
         try context.fetch(FetchDescriptor<HabitCheckIn>()).forEach(context.delete)
         try context.fetch(FetchDescriptor<Habit>()).forEach(context.delete)
+        try context.fetch(FetchDescriptor<CycleDay>()).forEach(context.delete)
         try context.save()
 
         var newLists: [TaskList] = []
@@ -323,6 +341,14 @@ extension EverydayBackup {
             }
         }
 
+        for entry in cycleDays ?? [] {
+            let day = CycleDay(day: entry.day)
+            day.flow = entry.flow
+            day.symptoms = entry.symptoms
+            day.note = entry.note
+            context.insert(day)
+        }
+
         try context.save()
 
         let defaults = UserDefaults.standard
@@ -330,6 +356,8 @@ extension EverydayBackup {
         if let days = settings.gymDays { defaults.set(days, forKey: Gym.Schedule.daysKey) }
         if let remind = settings.gymRemind { defaults.set(remind, forKey: Gym.Schedule.remindKey) }
         if let minutes = settings.gymRemindMinutes { defaults.set(minutes, forKey: Gym.Schedule.minutesKey) }
+        if let length = settings.cycleLength { defaults.set(length, forKey: CycleSettings.cycleLengthKey) }
+        if let length = settings.periodLength { defaults.set(length, forKey: CycleSettings.periodLengthKey) }
     }
 }
 
@@ -370,6 +398,7 @@ extension EverydayBackup {
 
     var isEmpty: Bool {
         lists.isEmpty && tasks.isEmpty && library.isEmpty && workouts.isEmpty && habits.isEmpty
+            && (cycleDays ?? []).isEmpty
     }
 
     // Dates as readable text, to the millisecond: "2026-11-08T14:03:12.481Z".
@@ -378,7 +407,7 @@ extension EverydayBackup {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .custom { date, encoder in
             var container = encoder.singleValueContainer()
-            try container.encode(date.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true)))
+            try container.encode(date.backupText)
         }
         return encoder
     }()
@@ -387,13 +416,31 @@ extension EverydayBackup {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let text = try decoder.singleValueContainer().decode(String.self)
+            // Rounded to the millisecond, so reading a file and writing it again gives the same file.
             if let date = try? Date(text, strategy: Date.ISO8601FormatStyle(includingFractionalSeconds: true)) {
-                return date
+                return date.toMillisecond
             }
-            if let date = try? Date(text, strategy: .iso8601) { return date }
+            if let date = try? Date(text, strategy: .iso8601) { return date.toMillisecond }
             throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
                                                     debugDescription: "Not a date: \(text)"))
         }
         return decoder
     }()
+}
+
+extension Date {
+    /// Whole milliseconds since 1970. Backups keep dates to the millisecond, so compare these.
+    nonisolated var milliseconds: Int64 { Int64((timeIntervalSince1970 * 1000).rounded()) }
+
+    /// This date rounded to the millisecond.
+    nonisolated var toMillisecond: Date { Date(timeIntervalSince1970: Double(milliseconds) / 1000) }
+
+    /// "2026-11-08T14:03:12.481Z". Built by hand, because the system formatter can turn
+    /// .481 into .480 when the stored number is a hair under.
+    nonisolated var backupText: String {
+        let ms = milliseconds
+        let seconds = ms >= 0 ? ms / 1000 : (ms - 999) / 1000
+        let whole = Date(timeIntervalSince1970: TimeInterval(seconds)).formatted(.iso8601)
+        return whole.dropLast() + String(format: ".%03lldZ", ms - seconds * 1000)
+    }
 }

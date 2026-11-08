@@ -48,7 +48,8 @@ final class SyncFolder {
     /// When this device's data last changed. Compared with the folder copy's `savedAt`.
     private var localChangedAt: Date {
         get { UserDefaults.standard.object(forKey: Self.changedKey) as? Date ?? .distantPast }
-        set { UserDefaults.standard.set(newValue, forKey: Self.changedKey) }
+        // Kept to the millisecond, like the file, so equal times compare as equal.
+        set { UserDefaults.standard.set(newValue.toMillisecond, forKey: Self.changedKey) }
     }
 
     /// The fingerprint of the data when we last looked, to notice changes.
@@ -97,19 +98,25 @@ final class SyncFolder {
         defer { checking = false }
         do {
             let local = try currentBackup()
-            let data = try await Task.detached { try SyncFolder.read(folder: folder) }.value
-            if let data {
-                guard let remote = EverydayBackup.decode(data) else {
-                    problem = "The file in this folder isn't an EverydayApp file."
-                    return
-                }
-                if remote.savedAt > local.savedAt {
+            let found = try await Task.detached { try SyncFolder.read(folder: folder) }.value
+            let copies = found.copies.compactMap(EverydayBackup.decode)
+            if found.copies.isEmpty {
+                try await write(local)   // empty folder: start it with this device's data
+            } else if let remote = copies.max(by: { $0.savedAt < $1.savedAt }) {
+                // When both devices wrote at once, iCloud keeps the extra copies on the side.
+                // The newest copy of all wins, and the file is rewritten as that one.
+                let same = remote.fingerprint == local.fingerprint
+                let theirs = remote.savedAt.milliseconds, mine = local.savedAt.milliseconds
+                if theirs > mine && !same {
                     try apply(remote)
-                } else if local.savedAt > remote.savedAt {
-                    try await write(local)
+                }
+                if found.hadConflicts || (mine > theirs && !same) {
+                    try await write(try currentBackup())
+                    await Task.detached { SyncFolder.resolveConflicts(folder: folder) }.value
                 }
             } else {
-                try await write(local)   // empty folder: start it with this device's data
+                problem = "The file in this folder isn't an EverydayApp file."
+                return
             }
             problem = nil
             lastSynced = .now
@@ -138,8 +145,9 @@ final class SyncFolder {
             folder = Self.resolveBookmark() ?? url
             folderName = url.lastPathComponent
             problem = nil
-            guard let data = try Self.read(folder: folder!) else { return nil }
-            guard let found = EverydayBackup.decode(data) else {
+            let copies = try Self.read(folder: folder!).copies
+            guard !copies.isEmpty else { return nil }
+            guard let found = copies.compactMap(EverydayBackup.decode).max(by: { $0.savedAt < $1.savedAt }) else {
                 problem = "The file in this folder isn't an EverydayApp file."
                 return nil
             }
@@ -227,10 +235,17 @@ final class SyncFolder {
         var errorDescription: String? { "The other device's copy is still downloading from iCloud. Try again in a moment." }
     }
 
-    /// Reads the file through a file coordinator, which also waits for iCloud. Returns nil if
-    /// there's no file yet. If iCloud hasn't downloaded it yet, starts that and throws, so an
-    /// empty-looking folder never overwrites your other device's data.
-    nonisolated private static func read(folder: URL) throws -> Data? {
+    /// What's in the folder: the file, plus any copies iCloud set aside because two devices
+    /// saved at the same time. No copies means there's no file yet.
+    nonisolated struct Found: Sendable {
+        var copies: [Data] = []
+        var hadConflicts = false
+    }
+
+    /// Reads the file through a file coordinator, which also waits for iCloud. If iCloud hasn't
+    /// downloaded it yet, starts that and throws, so an empty-looking folder never overwrites
+    /// your other device's data.
+    nonisolated private static func read(folder: URL) throws -> Found {
         let ok = folder.startAccessingSecurityScopedResource()
         defer { if ok { folder.stopAccessingSecurityScopedResource() } }
         let file = folder.appending(path: fileName)
@@ -240,15 +255,32 @@ final class SyncFolder {
             try? files.startDownloadingUbiquitousItem(at: file)
             throw SyncError.downloading
         }
-        var result: Data?
+        var found = Found()
         var inner: Error?
         var outer: NSError?
         NSFileCoordinator().coordinate(readingItemAt: file, options: [], error: &outer) { url in
             guard FileManager.default.fileExists(atPath: url.path) else { return }
-            do { result = try Data(contentsOf: url) } catch { inner = error }
+            do { found.copies.append(try Data(contentsOf: url)) } catch { inner = error }
+            for version in NSFileVersion.unresolvedConflictVersionsOfItem(at: url) ?? [] {
+                found.hadConflicts = true
+                if let data = try? Data(contentsOf: version.url) { found.copies.append(data) }
+            }
         }
         if let error = outer ?? inner { throw error }
-        return result
+        return found
+    }
+
+    /// Clears the copies iCloud set aside, once the newest one has been written as the file.
+    nonisolated private static func resolveConflicts(folder: URL) {
+        let ok = folder.startAccessingSecurityScopedResource()
+        defer { if ok { folder.stopAccessingSecurityScopedResource() } }
+        let file = folder.appending(path: fileName)
+        NSFileCoordinator().coordinate(writingItemAt: file, options: [], error: nil) { url in
+            for version in NSFileVersion.unresolvedConflictVersionsOfItem(at: url) ?? [] {
+                version.isResolved = true
+            }
+            try? NSFileVersion.removeOtherVersionsOfItem(at: url)
+        }
     }
 
     nonisolated private static func write(_ data: Data, folder: URL) throws {

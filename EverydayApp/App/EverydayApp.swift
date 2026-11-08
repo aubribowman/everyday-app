@@ -22,7 +22,7 @@ struct EverydayApp: App {
         do {
             container = try ModelContainer(for: TaskList.self, TaskItem.self, LibraryItem.self,
                                            WorkoutDay.self, Exercise.self, ExerciseLog.self,
-                                           Habit.self, HabitCheckIn.self)
+                                           Habit.self, HabitCheckIn.self, CycleDay.self)
         } catch {
             fatalError("Couldn't open the app's data: \(error)")
         }

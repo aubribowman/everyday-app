@@ -68,6 +68,22 @@ plant**, tap a suggestion to add it.
   <img src="docs/screenshots/habits.png" width="250" alt="Your garden: habits as potted plants with streaks">
 </p>
 
+### Cycle
+A period tracker. The **Your cycle** card on Today shows which day of your cycle it is, when
+your next period should start and your fertile window. Tap **Log period today** when it starts
+(and **Still on my period** on the days after). Tap **Open** for the full **Your cycle** screen:
+
+- **A month calendar** with your logged periods, the next predicted ones (dotted circles), your
+  fertile window and likely ovulation day. Swipe or use the arrows to change months.
+- **Tap any past day** to log its flow (spotting, light, medium or heavy), symptoms such as
+  cramps, headache or tiredness, and a note.
+- **Your averages** (cycle length and period length) and your **recent periods**.
+- **Settings** for your typical cycle and period length, which are used until you've logged two
+  periods, and **Show on Today** to hide or show the card.
+
+Predictions are estimates based on what you've logged. They aren't medical advice and shouldn't
+be used as birth control.
+
 ### Lists
 Keep lists for anything: groceries, weekend chores, books to read. Grocery items can have a
 quantity and a section (like Produce), and checked items move to "In the basket". Lists can
@@ -150,7 +166,7 @@ Open Settings by tapping your profile picture (or initials) on the Today screen.
 - **Sync between devices** keeps your iPhone and iPad in step. See
   [Keep your iPhone and iPad in sync](#keep-your-iphone-and-ipad-in-sync).
 - **Your data → Create a backup** makes one file with your lists, tasks, Library, workouts, habits,
-  your name and your gym days. Tap **Share backup file** to save it to Files or AirDrop it.
+  your cycle, your name and your gym days. Tap **Share backup file** to save it to Files or AirDrop it.
   **Import a backup** replaces everything on the device with a backup, after asking first.
 
 Calendar events aren't in the backup; they stay in your calendar accounts, which sync on their own.
@@ -178,7 +194,8 @@ you leave it. **Sync now** checks right away.
 1. Open `EverydayApp.xcodeproj` in Xcode.
 2. Choose an iPhone simulator or your own iPhone, then press **Run** (⌘R).
 3. To see the app filled in, go to the **Lists** tab and tap **Load sample data**. It adds
-   lists, tasks, Library items, three habits and a four-day gym routine.
+   lists, tasks, Library items, three habits, a four-day gym routine and a few months of
+   period history.
 
 The app asks for these permissions:
 
@@ -219,6 +236,7 @@ The app's code is in `EverydayApp/`, with one folder per part of the app:
 | `Lists/` | The Lists screen and the screen for a single list |
 | `Library/` | The Library screen; `LibraryLookup.swift` looks up books, shows and restaurants as you type; `RecipeImporter.swift` and `TikTokRecipe.swift` read a recipe from a website link or a TikTok video |
 | `Habits/` | Daily habits (`Habits.swift`: check-ins and streaks), the Your garden screen (`HabitsView.swift`) and the potted plants and growth stages (`PlantShelf.swift`) |
+| `Cycle/` | Period tracking: logged days and the predictions worked out from them (`Cycle.swift`), and the Your cycle card, screen and day sheet (`CycleView.swift`) |
 | `Gym/` | Workouts, sets, weight history, personal bests, gym days and reading a routine pasted from Notes (`Gym.swift`); the Gym screens (`GymView.swift`); saving to Apple Health (`GymHealth.swift`); and the rest countdown on the Lock Screen and Dynamic Island (`RestTimer.swift`) |
 | `Shared/` | Used across the app: `Models.swift` (tasks, lists and Library items, including the repeat logic), `Components.swift` (checkboxes, rows and cards), `Sheets.swift` (pop-ups for adding things and settings), `Theme.swift` (colors, fonts, date formatting, appearance), `Fonts/` (the bundled Instrument font files), `Search.swift`, `Reminders.swift` (task, habit and gym-day notifications), `WidgetSync.swift` (shares today's plans with the widget), `Backup.swift` (the backup file format) and `SyncFolder.swift` (syncing through a folder in iCloud Drive) |
 

@@ -13,6 +13,7 @@ struct TodayView: View {
     // Newest change first, so the book you started most recently is the one shown.
     @Query(sort: \LibraryItem.statusChangedAt, order: .reverse) private var library: [LibraryItem]
     @AppStorage("userName") private var userName = ""   // set in Settings; "" = no name yet
+    @AppStorage(CycleSettings.showOnTodayKey) private var showCycle = true   // turn off in Your cycle
     @State private var newKind: NewTaskKind?       // task or reminder being added
     @State private var showingNewEvent = false
     @State private var showingSettings = false
@@ -78,6 +79,7 @@ struct TodayView: View {
                     comingUp
                     onYourList
                     HabitsCard { path.append(HabitRoute.all) }
+                    if showCycle { CycleCard { path.append(CycleRoute.cycle) } }
                     if let workoutToShow { workoutCard(workoutToShow) }
                     if !upNext.isEmpty { upNextCard }
                     footer
@@ -94,6 +96,7 @@ struct TodayView: View {
             .navigationDestination(for: TaskList.self) { ListDetailView(list: $0) }
             .gymDestinations()
             .habitDestinations()
+            .cycleDestinations()
             .sheet(item: $newKind) { NewTaskSheet(kind: $0) }
             .sheet(isPresented: $showingNewEvent) { EventEditSheet().environment(calendarStore) }
             .sheet(isPresented: $showingSettings) { SettingsSheet() }

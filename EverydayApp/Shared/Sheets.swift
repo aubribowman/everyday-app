@@ -395,7 +395,7 @@ struct SettingsSheet: View {
         } header: {
             Text("Your data")
         } footer: {
-            Text("A backup is one file with your lists, tasks, library, workouts and habits. Save it somewhere safe, or import it on another device. Calendar events stay in your calendar app.")
+            Text("A backup is one file with your lists, tasks, library, workouts, habits and cycle. Save it somewhere safe, or import it on another device. Calendar events stay in your calendar app.")
         }
     }
 
