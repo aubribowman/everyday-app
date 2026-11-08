@@ -114,7 +114,7 @@ enum SampleData {
         habit("Stretch", "figure.yoga", .peach, order: 1, today: 1,
               doneDaysAgo: Array(1...4) + Array(8...19))
         habit("Read 20 minutes", "book", .lemon, order: 2, today: 0,
-              doneDaysAgo: [2, 4, 5, 6] + Array(10...15))
+              doneDaysAgo: [2, 4, 5, 6] + Array(10...12))
 
         // Gym: four workout days. Core was finished yesterday, so Leg x Glutes is today's,
         // and it's half done: one exercise finished (a new best) and two sets of the next.

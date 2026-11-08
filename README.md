@@ -48,13 +48,21 @@ them off. Turn on **Add to calendar** to put a task on your real calendar.
 
 ### Habits
 Track the small things you want to do every day, like "Stretch" or "Drink water" (8 times).
-Each habit is a plant on the **Plant shelf** on Today. Tap it to check in, and it grows
-through four stages: **Seed** (not yet), **Sprout** (started), **Leafy** (halfway) and
-**Bloom** (done today). Long-press a plant for more options.
+Each habit is a plant on the **Plant shelf** on Today. Tap it to water it (check in).
+Long-press a plant for more options.
 
-Tap **All habits** to open **Your garden**. There you can see each habit's streak, your best,
-and a bar for each of the last 7 days. You can also add, edit, reorder and delete habits, and
-set a daily reminder. Under **Seeds to plant**, tap a suggestion to add it.
+The plants are a little game. Each day you do a habit, its plant grows, and over time it moves
+through six stages: **Seed**, **Sprout** (1 day), **Leafy** (3 days), **Bud** (1 week), **Bloom**
+(2 weeks) and **Flourish** (30 days). Miss a day and the plant droops and turns **thirsty**.
+The first missed day is free, but every day after that in a row costs a day of growth. A bar on
+each pot shows how close it is to the next stage. Watering it into a new
+stage pops up a little celebration.
+
+Tap **All habits** to open **Your garden**. There you can see each habit's stage, its streak,
+your best, and the last 7 days. **Forgot to log a day?** Tap any of the last 7 days to mark it
+done or not done. To fix an older day, open the habit and use the **Past 5 weeks** calendar.
+You can also add, edit, reorder and delete habits, and set a daily reminder. Under **Seeds to
+plant**, tap a suggestion to add it.
 
 <p align="center">
   <img src="docs/screenshots/habits.png" width="250" alt="Your garden: habits as potted plants with streaks">

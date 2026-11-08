@@ -70,6 +70,67 @@ final class Habit {
         if isDoneToday { removeOne(in: context) } else { addOne(in: context) }
     }
 
+    // MARK: Any day (for logging a day you forgot)
+
+    /// How many times you did it on that day.
+    func count(on day: Date) -> Int { checkIn(on: day)?.count ?? 0 }
+
+    /// Whether you did it as many times as you meant to on that day.
+    func isDone(on day: Date) -> Bool { checkIn(on: day)?.isComplete ?? false }
+
+    /// Marks a day done (all the way, for counted habits) or clears it.
+    func setDone(_ done: Bool, on day: Date, in context: ModelContext) {
+        if let existing = checkIn(on: day) {
+            if done {
+                existing.count = max(existing.count, target)
+                existing.target = target
+            } else {
+                context.delete(existing)
+            }
+        } else if done {
+            let new = HabitCheckIn(day: day, count: target, target: target)
+            context.insert(new)
+            new.habit = self
+        }
+    }
+
+    /// Flips a day between done and not done.
+    func toggle(on day: Date, in context: ModelContext) {
+        setDone(!isDone(on: day), on: day, in: context)
+    }
+
+    // MARK: Growth (the plant game)
+
+    /// Growth points: +1 for every day you did it. The first day you miss is free,
+    /// but each day after that in a row costs a point. Never goes below 0.
+    var growth: Int {
+        let calendar = Calendar.current
+        let done = doneDays
+        guard let first = done.min() else { return 0 }
+        let today = calendar.startOfDay(for: .now)
+        var points = 0
+        var missedInARow = 0
+        var day = first
+        while day <= today {
+            if done.contains(day) {
+                points += 1
+                missedInARow = 0
+            } else if day < today {          // today isn't missed until it's over
+                missedInARow += 1
+                if missedInARow > 1 { points = max(points - 1, 0) }
+            }
+            day = calendar.date(byAdding: .day, value: 1, to: day)!
+        }
+        return points
+    }
+
+    /// Missed yesterday and nothing logged yet today. One more missed day and it starts to shrink.
+    var isThirsty: Bool {
+        guard countToday == 0, growth > 0 else { return false }
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now)!
+        return !isDone(on: yesterday)
+    }
+
     // MARK: Streaks
 
     /// The days you did it (as many times as you meant to), as start-of-day dates.
