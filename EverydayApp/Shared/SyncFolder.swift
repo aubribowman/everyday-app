@@ -22,6 +22,9 @@ final class SyncFolder {
     private(set) var folderName: String?
     private(set) var lastSynced: Date?
     var problem: String?
+    /// Whether iCloud has sent this device's copy on yet, e.g. "Waiting to upload to iCloud".
+    /// Nil once it's uploaded (or for a folder that isn't in iCloud).
+    private(set) var cloudStatus: String?
 
     private var folder: URL?
     var isOn: Bool { folder != nil }
@@ -123,6 +126,7 @@ final class SyncFolder {
         } catch {
             problem = "Couldn't sync: \(error.localizedDescription)"
         }
+        cloudStatus = await Task.detached { SyncFolder.uploadStatus(folder: folder) }.value
     }
 
     private func write(_ backup: EverydayBackup) async throws {
@@ -192,6 +196,7 @@ final class SyncFolder {
         folderName = nil
         lastSynced = nil
         problem = nil
+        cloudStatus = nil
     }
 
     // MARK: Backups
@@ -281,6 +286,27 @@ final class SyncFolder {
             }
             try? NSFileVersion.removeOtherVersionsOfItem(at: url)
         }
+    }
+
+    /// Asks iOS whether the file has reached iCloud yet. Saving the file only saves it on this
+    /// device; iOS uploads it in the background, and Low Power Mode, no connection or a full
+    /// iCloud can hold that up.
+    nonisolated private static func uploadStatus(folder: URL) -> String? {
+        let ok = folder.startAccessingSecurityScopedResource()
+        defer { if ok { folder.stopAccessingSecurityScopedResource() } }
+        var file = folder.appending(path: fileName)
+        file.removeAllCachedResourceValues()
+        guard let values = try? file.resourceValues(forKeys: [
+            .isUbiquitousItemKey, .ubiquitousItemIsUploadedKey, .ubiquitousItemIsUploadingKey,
+            .ubiquitousItemUploadingErrorKey,
+        ]), values.isUbiquitousItem == true else { return nil }
+        if let error = values.ubiquitousItemUploadingError {
+            return "iCloud couldn't upload your changes: \(error.localizedDescription)"
+        }
+        if values.ubiquitousItemIsUploaded == true { return nil }
+        return values.ubiquitousItemIsUploading == true
+            ? "Uploading to iCloud…"
+            : "Saved on this device, waiting to upload to iCloud. Your other devices get it once it's uploaded."
     }
 
     nonisolated private static func write(_ data: Data, folder: URL) throws {

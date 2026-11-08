@@ -376,6 +376,11 @@ struct SettingsSheet: View {
                         .font(.sans(.footnote))
                         .foregroundStyle(Theme.muted)
                 }
+                if let status = sync.cloudStatus {
+                    Label(status, systemImage: "icloud.and.arrow.up")
+                        .font(.sans(.footnote))
+                        .foregroundStyle(Theme.terracotta)
+                }
                 Button("Sync now", systemImage: "arrow.triangle.2.circlepath") {
                     Task { await sync.syncNow() }
                 }
