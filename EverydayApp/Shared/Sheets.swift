@@ -274,6 +274,7 @@ struct SettingsSheet: View {
 
                 syncSection
                 backupSection
+                if let expiry = AppExpiry.date { expirySection(expiry) }
             }
             .tint(Theme.forest)
             .themedForm()
@@ -342,6 +343,21 @@ struct SettingsSheet: View {
             }
         }
         .presentationDetents([.large])
+    }
+
+    // MARK: Reinstalling
+
+    /// When this copy of the app stops opening (free developer accounts: 7 days after
+    /// installing from Xcode).
+    private func expirySection(_ expiry: Date) -> some View {
+        Section {
+            LabeledContent("Reinstall by", value: AppExpiry.text(expiry))
+                .foregroundStyle(expiry.timeIntervalSinceNow < 2 * 86_400 ? Theme.terracotta : Theme.ink)
+        } header: {
+            Text("This copy of the app")
+        } footer: {
+            Text("Apps installed from Xcode with a free account stop opening after 7 days. Connect to your Mac and press Run in Xcode before then to renew it. Your data stays. You'll get a reminder 2 days and 1 day before.")
+        }
     }
 
     // MARK: Sync and backups

@@ -230,6 +230,11 @@ If Xcode says your account can't use a capability (Apple Health or App Groups ca
 developer account), remove it under **Signing & Capabilities**. The rest of the app still works;
 only Health saving or the widget's data is affected.
 
+With a free account, the installed app stops opening 7 days after Xcode made its signing
+profile. To renew it, connect your iPhone and press **Run** in Xcode again. Your data stays.
+**Settings → This copy of the app** shows the exact cutoff, and the app reminds you at 7 PM two
+days and one day before, and again three hours before.
+
 ## Project layout
 
 The app's code is in `EverydayApp/`, with one folder per part of the app:
@@ -245,7 +250,7 @@ The app's code is in `EverydayApp/`, with one folder per part of the app:
 | `Habits/` | Daily habits (`Habits.swift`: check-ins and streaks), the Your garden screen (`HabitsView.swift`) and the potted plants and growth stages (`PlantShelf.swift`) |
 | `Cycle/` | Period tracking: logged days and the predictions worked out from them (`Cycle.swift`), and the Your cycle card, screen and day sheet (`CycleView.swift`) |
 | `Gym/` | Workouts, sets, weight history, personal bests, gym days and reading a routine pasted from Notes (`Gym.swift`); the Gym screens (`GymView.swift`); saving to Apple Health (`GymHealth.swift`); and the rest countdown on the Lock Screen and Dynamic Island (`RestTimer.swift`) |
-| `Shared/` | Used across the app: `Models.swift` (tasks, lists and Library items, including the repeat logic), `Components.swift` (checkboxes, rows and cards), `Sheets.swift` (pop-ups for adding things and settings), `Theme.swift` (colors, fonts, date formatting, appearance), `Fonts/` (the bundled Instrument font files), `Search.swift`, `Reminders.swift` (task, habit, gym-day and cycle notifications), `WidgetSync.swift` (shares today's plans with the widget), `Backup.swift` (the backup file format) and `SyncFolder.swift` (syncing through a folder in iCloud Drive) |
+| `Shared/` | Used across the app: `Models.swift` (tasks, lists and Library items, including the repeat logic), `Components.swift` (checkboxes, rows and cards), `Sheets.swift` (pop-ups for adding things and settings), `Theme.swift` (colors, fonts, date formatting, appearance), `Fonts/` (the bundled Instrument font files), `Search.swift`, `Reminders.swift` (task, habit, gym-day and cycle notifications), `WidgetSync.swift` (shares today's plans with the widget), `AppExpiry.swift` (when a free-account install stops opening), `Backup.swift` (the backup file format) and `SyncFolder.swift` (syncing through a folder in iCloud Drive) |
 
 `EverydayWidget/` (next to `EverydayApp/`) is the home screen widget and the rest timer's Lock Screen view, a separate part of the app that iOS runs on its own.
 

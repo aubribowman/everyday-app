@@ -5,7 +5,8 @@ import UserNotifications
 
 /// Sends a notification for each task at its "Remind me" time, for each habit
 /// with a daily reminder, an evening habit check-in, on your gym days ("Arm x Shoulder
-/// Day today"), and for your cycle (before your period, and to log it while it's on).
+/// Day today"), for your cycle (before your period, and to log it while it's on), and to
+/// reinstall the app from Xcode before it stops opening (see AppExpiry.swift).
 ///
 /// Rather than adding and removing notifications one by one, `update(for:)` clears
 /// everything and schedules again from the full task list. ContentView calls it whenever
@@ -59,13 +60,14 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
                 cycleDays: [CycleDay] = []) async {
         let due = tasks.filter(needsReminder)
             .sorted { ($0.nudgeDate ?? .distantFuture) < ($1.nudgeDate ?? .distantFuture) }
+        let expiry = expiryRequests()
         // Habits, gym days and your cycle share whatever room tasks leave, soonest first.
         let habitRequests = (requests(for: habits) + checkInRequests(for: habits)
                              + gymRequests(for: workouts) + cycleRequests(for: cycleDays))
             .sorted { $0.date < $1.date }.map(\.request)
 
         // Ask for permission the first time there's something to remind you about.
-        if !due.isEmpty || !habitRequests.isEmpty,
+        if !due.isEmpty || !habitRequests.isEmpty || !expiry.isEmpty,
            await center.notificationSettings().authorizationStatus == .notDetermined {
             _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
         }
@@ -75,6 +77,11 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
             .filter { $0 != RestTimer.notificationID }
         center.removePendingNotificationRequests(withIdentifiers: old)
         var scheduled = 0
+        // The reinstall reminders come first: missing them locks you out of the app.
+        for request in expiry {
+            try? await center.add(request)
+            scheduled += 1
+        }
         for task in due {
             for request in requests(for: task) where scheduled < limit {
                 try? await center.add(request)
@@ -234,6 +241,37 @@ final class Reminders: NSObject, UNUserNotificationCenterDelegate {
                 }
             }
         }
+        return found
+    }
+
+    // MARK: Reinstalling
+
+    /// "Reinstall EverydayApp soon": at 7 PM two days and one day before this copy of the
+    /// app stops opening, and three hours before. Nothing in the simulator.
+    private func expiryRequests() -> [UNNotificationRequest] {
+        guard let expiry = AppExpiry.date else { return [] }
+        let cal = Calendar.current
+        let when = AppExpiry.text(expiry)
+        let body = "Connect your iPhone to your Mac and press Run in Xcode before \(when). Your data stays."
+        var found: [UNNotificationRequest] = []
+
+        func add(_ fire: Date?, id: String, title: String) {
+            guard let fire, fire > .now, fire < expiry else { return }
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+            let parts = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
+            found.append(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+        }
+        for days in [2, 1] {
+            let day = cal.date(byAdding: .day, value: -days, to: expiry) ?? expiry
+            add(cal.date(bySettingHour: 19, minute: 0, second: 0, of: day), id: "expiry-\(days)",
+                title: days == 1 ? "Reinstall EverydayApp by tomorrow" : "Reinstall EverydayApp soon")
+        }
+        add(expiry.addingTimeInterval(-3 * 3600), id: "expiry-last",
+            title: "EverydayApp stops opening at \(expiry.formatted(date: .omitted, time: .shortened))")
         return found
     }
 
